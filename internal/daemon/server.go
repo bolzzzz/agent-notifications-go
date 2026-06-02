@@ -270,6 +270,7 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 		Hints: map[string]dbus.Variant{
 			"desktop-entry":  dbus.MakeVariant(GetNotificationDesktopEntryID(focusTarget)),
 			"suppress-sound": dbus.MakeVariant(true),
+			"urgency":        dbus.MakeVariant(byte(req.Urgency)),
 		},
 	}
 

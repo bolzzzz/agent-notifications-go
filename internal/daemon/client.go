@@ -38,6 +38,7 @@ func NewClient() (*Client, error) {
 // focusFolder is the project folder name for window-specific focus (may be empty).
 // focusWindowID and focusWindowTitle are optional exact window hints captured in the hook process.
 // wezTermPaneID and wezTermSocket are WezTerm-specific hints for tab-level focus (may be empty).
+// urgency is the D-Bus urgency hint: 0=low, 1=normal, 2=critical.
 func (c *Client) SendNotification(
 	title,
 	body,
@@ -47,6 +48,7 @@ func (c *Client) SendNotification(
 	focusWindowTitle,
 	wezTermPaneID,
 	wezTermSocket string,
+	urgency,
 	timeout int,
 ) (*NotifyResponse, error) {
 	req := Request{
@@ -61,6 +63,7 @@ func (c *Client) SendNotification(
 			FocusWindowTitle:   focusWindowTitle,
 			FocusWezTermPaneID: wezTermPaneID,
 			FocusWezTermSocket: wezTermSocket,
+			Urgency:            urgency,
 			Timeout:            timeout,
 		},
 	}
