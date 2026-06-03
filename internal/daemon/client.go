@@ -201,6 +201,14 @@ func StopDaemon() error {
 
 // findDaemonBinary locates the daemon binary
 func findDaemonBinary() (string, error) {
+	// Honour explicit override (set in settings.json for custom installs or
+	// when the platform binary has a non-standard name).
+	if bin := os.Getenv("CLAUDE_NOTIFICATIONS_BIN"); bin != "" {
+		if _, err := os.Stat(bin); err == nil {
+			return bin, nil
+		}
+	}
+
 	// Check CLAUDE_PLUGIN_ROOT
 	if pluginRoot := os.Getenv("CLAUDE_PLUGIN_ROOT"); pluginRoot != "" {
 		// Try different binary names
