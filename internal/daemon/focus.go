@@ -320,12 +320,11 @@ func activateWindowTitleWithXdotool(windowTitle string) error {
 // This method does NOT require unsafe_mode and works on GNOME 42+.
 //
 // Search order:
-//  1. activateBySubstring with the folder-specific term, when available — ensures
-//     the correct project window is focused when multiple windows of the same app
-//     are open (e.g. two VS Code windows for different projects).
-//  2. activateByWmClass — reliable for Wayland-native terminals whose WM class is
-//     a reverse-domain app ID (e.g. com.mitchellh.ghostty, org.wezfurlong.wezterm)
-//     and whose window title does not contain the app name.
+//  1. activateByWmClass — app-specific match, won't accidentally match browser
+//     windows even when a Chrome/Firefox tab title contains the project folder name.
+//  2. activateBySubstring with the folder-specific term, when available — fallback
+//     for cases where WM class lookup fails but the folder name in the window title
+//     uniquely identifies the target (e.g. two VS Code windows for different projects).
 //  3. activateBySubstring with the generic terminal name as a final fallback.
 func TryActivateWindowByTitle(terminalName, folderName string) error {
 	gnomeActivate := func(method, arg string) bool {
@@ -339,19 +338,21 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 		return err == nil && strings.Contains(strings.TrimSpace(string(output)), "true")
 	}
 
-	// Step 1: folder-specific substring search (e.g. VS Code with a project folder).
+	// Step 1: WM class match — app-specific and most reliable for Wayland-native
+	// terminals. Tried first to avoid substring searches accidentally matching
+	// browser windows (e.g. a Chrome tab with the project folder name in its title).
+	if wmClass := GetGnomeWmClass(terminalName); wmClass != "" {
+		if gnomeActivate("activateByWmClass", wmClass) {
+			return nil
+		}
+	}
+
+	// Step 2: folder-specific substring search (e.g. VS Code with a project folder).
 	// Only attempted when GetSearchTermWithFolder produces a different term than the
 	// plain terminal name — i.e. when the folder name is actually being used.
 	folderTerm := GetSearchTermWithFolder(terminalName, folderName)
 	if folderTerm != GetSearchTerm(terminalName) {
 		if gnomeActivate("activateBySubstring", folderTerm) {
-			return nil
-		}
-	}
-
-	// Step 2: WM class match — most reliable for Wayland-native terminals.
-	if wmClass := GetGnomeWmClass(terminalName); wmClass != "" {
-		if gnomeActivate("activateByWmClass", wmClass) {
 			return nil
 		}
 	}
@@ -380,8 +381,10 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 // Requires unsafe_mode or development-tools enabled.
 func TryGnomeShellEvalByTitle(terminalName, folderName string) error {
 	searchTerm := escapeJS(GetSearchTermWithFolder(terminalName, folderName))
+	wmClass := escapeJS(GetGnomeWmClass(terminalName))
 
-	// JavaScript to find window by title and activate it
+	// Filter by both title substring and WM class to avoid accidentally focusing
+	// browser windows whose tab titles contain the search term (e.g. GitHub pages).
 	js := fmt.Sprintf(`
 		(function() {
 			let start = Date.now();
@@ -389,14 +392,17 @@ func TryGnomeShellEvalByTitle(terminalName, folderName string) error {
 			global.get_window_actors().forEach(function(actor) {
 				let win = actor.get_meta_window();
 				let title = win.get_title() || '';
-				if (title.indexOf('%s') !== -1) {
+				let wm = (win.get_wm_class() || '').toLowerCase();
+				let titleMatch = title.indexOf('%s') !== -1;
+				let classMatch = wm.indexOf('%s') !== -1;
+				if (titleMatch && classMatch) {
 					win.activate(start);
 					found = true;
 				}
 			});
 			return found ? 'activated' : 'no matching window';
 		})()
-	`, searchTerm)
+	`, searchTerm, wmClass)
 
 	cmd := exec.Command("gdbus", "call",
 		"--session",
