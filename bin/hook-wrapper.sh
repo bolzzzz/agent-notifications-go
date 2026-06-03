@@ -91,7 +91,13 @@ fi
 if [ "$IS_WINDOWS" = 1 ]; then
     detect_windows_binary
 else
-    BINARY="$SCRIPT_DIR/claude-notifications"
+    # Allow overriding for custom installs or when the platform binary has a
+    # non-standard name (e.g. CLAUDE_NOTIFICATIONS_BIN in settings.json).
+    if [ -n "${CLAUDE_NOTIFICATIONS_BIN:-}" ] && [ -x "$CLAUDE_NOTIFICATIONS_BIN" ]; then
+        BINARY="$CLAUDE_NOTIFICATIONS_BIN"
+    else
+        BINARY="$SCRIPT_DIR/claude-notifications"
+    fi
 fi
 
 # Guard: if BINARY is a Git text-symlink stub (not a real symlink), resolve or invalidate it.
