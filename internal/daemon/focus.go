@@ -320,11 +320,13 @@ func activateWindowTitleWithXdotool(windowTitle string) error {
 // This method does NOT require unsafe_mode and works on GNOME 42+.
 //
 // Search order:
-//  1. activateByWmClass — app-specific match, won't accidentally match browser
-//     windows even when a Chrome/Firefox tab title contains the project folder name.
-//  2. activateBySubstring with the folder-specific term, when available — fallback
-//     for cases where WM class lookup fails but the folder name in the window title
-//     uniquely identifies the target (e.g. two VS Code windows for different projects).
+//  1. activateBySubstring with the folder-specific term, when available — this
+//     distinguishes multiple windows of the same app (e.g. two VS Code windows for
+//     different projects). GetSearchTermWithFolder includes the app title suffix for
+//     VS Code ("folder — Visual Studio Code") so it won't match browser windows whose
+//     tab title happens to contain the folder name.
+//  2. activateByWmClass — app-specific fallback for when no folder name is available
+//     or the folder-specific search found no match.
 //  3. activateBySubstring with the generic terminal name as a final fallback.
 func TryActivateWindowByTitle(terminalName, folderName string) error {
 	gnomeActivate := func(method, arg string) bool {
@@ -338,21 +340,20 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 		return err == nil && strings.Contains(strings.TrimSpace(string(output)), "true")
 	}
 
-	// Step 1: WM class match — app-specific and most reliable for Wayland-native
-	// terminals. Tried first to avoid substring searches accidentally matching
-	// browser windows (e.g. a Chrome tab with the project folder name in its title).
-	if wmClass := GetGnomeWmClass(terminalName); wmClass != "" {
-		if gnomeActivate("activateByWmClass", wmClass) {
+	// Step 1: folder-specific substring search (e.g. VS Code with a project folder).
+	// Tried first so multiple windows of the same app are distinguished by the
+	// project folder name in the title. The search term includes the app title suffix
+	// (see GetSearchTermWithFolder) to avoid false-matching browser windows.
+	folderTerm := GetSearchTermWithFolder(terminalName, folderName)
+	if folderTerm != GetSearchTerm(terminalName) {
+		if gnomeActivate("activateBySubstring", folderTerm) {
 			return nil
 		}
 	}
 
-	// Step 2: folder-specific substring search (e.g. VS Code with a project folder).
-	// Only attempted when GetSearchTermWithFolder produces a different term than the
-	// plain terminal name — i.e. when the folder name is actually being used.
-	folderTerm := GetSearchTermWithFolder(terminalName, folderName)
-	if folderTerm != GetSearchTerm(terminalName) {
-		if gnomeActivate("activateBySubstring", folderTerm) {
+	// Step 2: WM class match — app-specific fallback when no folder name is available.
+	if wmClass := GetGnomeWmClass(terminalName); wmClass != "" {
+		if gnomeActivate("activateByWmClass", wmClass) {
 			return nil
 		}
 	}

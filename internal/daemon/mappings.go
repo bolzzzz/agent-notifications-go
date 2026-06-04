@@ -220,11 +220,17 @@ func GetSearchTerm(terminalName string) string {
 
 // GetSearchTermWithFolder returns the window title search term, using the project
 // folder name for VS Code when available (more specific than "Visual Studio Code").
+// For VS Code the folder name is combined with the app title suffix (em dash +
+// "Visual Studio Code") so the search term matches VS Code windows precisely
+// without accidentally matching browser tabs that contain the folder name.
 func GetSearchTermWithFolder(terminalName, folderName string) string {
 	switch strings.ToLower(terminalName) {
 	case "code", "vscode", "visual studio code":
 		if folderName != "" {
-			return folderName
+			// VS Code window titles use an em dash: "folder — Visual Studio Code".
+			// Including the suffix avoids matching browser windows whose tab title
+			// contains the folder name (e.g. a GitHub tab open for the same repo).
+			return folderName + " — Visual Studio Code"
 		}
 	}
 	return GetSearchTerm(terminalName)
