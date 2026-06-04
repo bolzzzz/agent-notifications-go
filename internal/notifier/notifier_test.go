@@ -614,20 +614,24 @@ func TestBuildTerminalNotifierArgs_EmptyValues(t *testing.T) {
 	}
 }
 
-func TestBuildTerminalNotifierArgs_UniqueGroupID(t *testing.T) {
-	// Two calls should produce different group IDs
-	args1 := buildTerminalNotifierArgs("Title", "Msg", "com.test", "", true)
-	time.Sleep(time.Nanosecond) // Ensure different timestamp
-	args2 := buildTerminalNotifierArgs("Title", "Msg", "com.test", "", true)
-
-	group1 := getArgValue(args1, "-group")
-	group2 := getArgValue(args2, "-group")
-
-	if group1 == "" || group2 == "" {
-		t.Error("Group ID should not be empty")
+func TestBuildTerminalNotifierArgs_GroupIDStablePerCwd(t *testing.T) {
+	// Same cwd → same group ID (so new notification replaces the old one)
+	args1 := buildTerminalNotifierArgs("Title", "Msg", "com.test", "/home/user/myproject", true)
+	args2 := buildTerminalNotifierArgs("Title", "Msg", "com.test", "/home/user/myproject", true)
+	if getArgValue(args1, "-group") != getArgValue(args2, "-group") {
+		t.Error("Same cwd should produce the same group ID")
 	}
-	if group1 == group2 {
-		t.Error("Group IDs should be unique between calls")
+
+	// Different cwd → different group ID (different projects don't replace each other)
+	args3 := buildTerminalNotifierArgs("Title", "Msg", "com.test", "/home/user/other", true)
+	if getArgValue(args1, "-group") == getArgValue(args3, "-group") {
+		t.Error("Different cwd should produce different group IDs")
+	}
+
+	// Empty cwd → fallback group ID
+	args4 := buildTerminalNotifierArgs("Title", "Msg", "com.test", "", true)
+	if getArgValue(args4, "-group") == "" {
+		t.Error("Group ID should not be empty even when cwd is empty")
 	}
 }
 
@@ -905,16 +909,21 @@ func TestBuildTerminalNotifierArgs_NoNilValues(t *testing.T) {
 }
 
 func TestBuildTerminalNotifierArgs_GroupIDFormat(t *testing.T) {
+	// Without cwd: base group ID
 	args := buildTerminalNotifierArgs("Title", "Message", "com.test", "", true)
-
 	groupID := getArgValue(args, "-group")
 	if groupID == "" {
 		t.Fatal("Group ID is empty")
 	}
+	if !strings.HasPrefix(groupID, "claude-notif") {
+		t.Errorf("Group ID should start with 'claude-notif', got: %s", groupID)
+	}
 
-	// Group ID should start with "claude-notif-"
-	if !strings.HasPrefix(groupID, "claude-notif-") {
-		t.Errorf("Group ID should start with 'claude-notif-', got: %s", groupID)
+	// With cwd: group ID embeds the path
+	args2 := buildTerminalNotifierArgs("Title", "Message", "com.test", "/home/user/proj", true)
+	groupID2 := getArgValue(args2, "-group")
+	if !strings.Contains(groupID2, "/home/user/proj") {
+		t.Errorf("Group ID with cwd should contain the path, got: %s", groupID2)
 	}
 }
 

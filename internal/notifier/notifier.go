@@ -324,8 +324,13 @@ func buildTerminalNotifierArgsWithOptions(title, message, bundleID, cwd, ghostty
 		}
 	}
 
-	// Add group ID to prevent notification stacking issues
-	args = append(args, "-group", fmt.Sprintf("claude-notif-%d", time.Now().UnixNano()))
+	// Group ID: stable per source window so a new notification replaces the
+	// previous one from the same project rather than stacking a second banner.
+	groupID := "claude-notif"
+	if cwd != "" {
+		groupID = "claude-notif:" + cwd
+	}
+	args = append(args, "-group", groupID)
 
 	return args
 }

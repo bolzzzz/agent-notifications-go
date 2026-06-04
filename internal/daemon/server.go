@@ -27,6 +27,7 @@ type focusInfo struct {
 	windowTitle   string
 	wezTermPaneID string
 	wezTermSocket string
+	notifKey      string // source key used in lastNotifID, for cleanup on close
 }
 
 // Server is the notification daemon server
@@ -39,6 +40,11 @@ type Server struct {
 	// Focus context mapping: notification ID -> focus info
 	focusCtx   map[uint32]focusInfo
 	focusCtxMu sync.RWMutex
+
+	// Last notification ID per source window, for in-place replacement.
+	// Key: notifSourceKey(focusTarget, focusFolder, focusWindowID)
+	lastNotifID   map[string]uint32
+	lastNotifIDMu sync.Mutex
 
 	// Idle timeout for auto-shutdown
 	idleTimeout  time.Duration
@@ -76,6 +82,7 @@ func NewServer(cfg ServerConfig) (*Server, error) {
 		conn:         conn,
 		startTime:    time.Now(),
 		focusCtx:     make(map[uint32]focusInfo),
+		lastNotifID:  make(map[string]uint32),
 		idleTimeout:  cfg.IdleTimeout,
 		lastActivity: time.Now(),
 		done:         make(chan struct{}),
@@ -244,6 +251,19 @@ func (s *Server) handleConnection(conn net.Conn) {
 	}
 }
 
+// notifSourceKey derives a stable key identifying the source window for
+// notification replacement tracking. Prefers the exact X11 window ID when
+// available (X11 sessions); falls back to terminal+folder (Wayland).
+func notifSourceKey(focusTarget, focusFolder, focusWindowID string) string {
+	if focusWindowID != "" {
+		return "winid:" + focusWindowID
+	}
+	if focusFolder != "" {
+		return focusTarget + ":" + focusFolder
+	}
+	return focusTarget
+}
+
 // handleNotification processes a notification request
 func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error) {
 	// Determine focus target
@@ -258,9 +278,17 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 		timeout = 30 * time.Second
 	}
 
+	// Look up the previous notification ID for this source window so we can
+	// replace it in-place instead of stacking a second banner.
+	key := notifSourceKey(focusTarget, req.FocusFolder, req.FocusWindowID)
+	s.lastNotifIDMu.Lock()
+	replacesID := s.lastNotifID[key]
+	s.lastNotifIDMu.Unlock()
+
 	// Create notification with click action
 	n := notify.Notification{
 		AppName:       "claude-notifications",
+		ReplacesID:    replacesID,
 		Summary:       req.Title,
 		Body:          req.Body,
 		ExpireTimeout: timeout,
@@ -280,7 +308,12 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 		return nil, fmt.Errorf("failed to send notification: %w", err)
 	}
 
-	// Store focus context
+	// Update last notification ID for this source.
+	s.lastNotifIDMu.Lock()
+	s.lastNotifID[key] = id
+	s.lastNotifIDMu.Unlock()
+
+	// Store focus context (write lock; also read for no-op check on same id)
 	s.focusCtxMu.Lock()
 	s.focusCtx[id] = focusInfo{
 		target:        focusTarget,
@@ -289,11 +322,12 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 		windowTitle:   req.FocusWindowTitle,
 		wezTermPaneID: req.FocusWezTermPaneID,
 		wezTermSocket: req.FocusWezTermSocket,
+		notifKey:      key,
 	}
 	s.focusCtxMu.Unlock()
 
-	log.Printf("[INFO] Notification sent: ID=%d, focus_target=%s, focus_folder=%s, focus_window_id=%s, focus_window_title=%q, wezterm_pane=%s",
-		id, focusTarget, req.FocusFolder, req.FocusWindowID, req.FocusWindowTitle, req.FocusWezTermPaneID)
+	log.Printf("[INFO] Notification sent: ID=%d (replaces=%d), focus_target=%s, focus_folder=%s, focus_window_id=%s, focus_window_title=%q, wezterm_pane=%s",
+		id, replacesID, focusTarget, req.FocusFolder, req.FocusWindowID, req.FocusWindowTitle, req.FocusWezTermPaneID)
 
 	return &NotifyResponse{
 		Success:        true,
@@ -342,10 +376,20 @@ func (s *Server) onActionInvoked(sig *notify.ActionInvokedSignal) {
 
 // onNotificationClosed is called when a notification is closed
 func (s *Server) onNotificationClosed(sig *notify.NotificationClosedSignal) {
-	// Clean up focus context
 	s.focusCtxMu.Lock()
+	info, exists := s.focusCtx[sig.ID]
 	delete(s.focusCtx, sig.ID)
 	s.focusCtxMu.Unlock()
+
+	// Remove the replacement tracking entry so the next notification from this
+	// source creates a fresh banner rather than targeting a dismissed ID.
+	if exists && info.notifKey != "" {
+		s.lastNotifIDMu.Lock()
+		if s.lastNotifID[info.notifKey] == sig.ID {
+			delete(s.lastNotifID, info.notifKey)
+		}
+		s.lastNotifIDMu.Unlock()
+	}
 }
 
 // updateActivity updates the last activity timestamp
