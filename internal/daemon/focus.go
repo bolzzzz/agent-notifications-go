@@ -340,13 +340,21 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 		return err == nil && strings.Contains(strings.TrimSpace(string(output)), "true")
 	}
 
-	// Step 1: folder-specific substring search (e.g. VS Code with a project folder).
-	// Tried first so multiple windows of the same app are distinguished by the
-	// project folder name in the title. The search term includes the app title suffix
-	// (see GetSearchTermWithFolder) to avoid false-matching browser windows.
+	// Step 1: folder + app name substring search (e.g. "project — Visual Studio Code").
+	// Distinguishes multiple windows of the same app by project folder. The app title
+	// suffix avoids false-matching browser windows whose tab title contains the folder name.
 	folderTerm := GetSearchTermWithFolder(terminalName, folderName)
 	if folderTerm != GetSearchTerm(terminalName) {
 		if gnomeActivate("activateBySubstring", folderTerm) {
+			return nil
+		}
+	}
+
+	// Step 1.5: bare folder name search — handles apps with custom title formats that
+	// omit the app name suffix (e.g. VS Code with window.title set to just "${rootName}").
+	// More specific than WM class but less specific than "folder — AppName".
+	if folderName != "" && folderTerm != GetSearchTerm(terminalName) {
+		if gnomeActivate("activateBySubstring", folderName) {
 			return nil
 		}
 	}
