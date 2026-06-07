@@ -340,24 +340,28 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 		return err == nil && strings.Contains(strings.TrimSpace(string(output)), "true")
 	}
 
-	// Step 1: folder + app name substring search (e.g. "project — Visual Studio Code").
-	// Distinguishes multiple windows of the same app by project folder. The app title
-	// suffix avoids false-matching browser windows whose tab title contains the folder name.
+	// Step 1: folder-specific search (e.g. "project — Visual Studio Code").
+	// When folderName is available and the terminal supports folder-specific titles
+	// (e.g. VS Code), only attempt this search. If it fails, return an error immediately
+	// rather than falling through to WM-class or generic searches — those cannot
+	// distinguish between multiple windows of the same app and would focus the wrong one.
 	folderTerm := GetSearchTermWithFolder(terminalName, folderName)
 	if folderTerm != GetSearchTerm(terminalName) {
 		if gnomeActivate("activateBySubstring", folderTerm) {
 			return nil
 		}
+		return fmt.Errorf("activate-window-by-title: no window matching %q", folderTerm)
 	}
 
-	// Step 2: WM class match — app-specific fallback when no folder name is available.
+	// No folder-specific title available: fall back to WM class and generic searches.
+	// These are safe when there is only one window of this app, or when any window will do.
 	if wmClass := GetGnomeWmClass(terminalName); wmClass != "" {
 		if gnomeActivate("activateByWmClass", wmClass) {
 			return nil
 		}
 	}
 
-	// Step 3: generic substring fallback.
+	// Generic substring fallback.
 	genericTerm := GetSearchTerm(terminalName)
 	cmd := exec.Command("busctl", "--user", "call",
 		"org.gnome.Shell",
@@ -380,24 +384,24 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 // TryGnomeShellEvalByTitle uses GNOME Shell's Eval to find and focus window by title.
 // Requires unsafe_mode or development-tools enabled.
 //
-// Tries search terms from most specific to least:
-//  1. folder + app suffix (e.g. "folder — Visual Studio Code")
-//  2. bare folder name — handles custom title formats that insert extra segments
-//     (e.g. "${rootName}${sep}${profileName}${sep}${appName}") where the suffix
-//     search fails but the folder name is still present.
+// When a folder name is available, searches for windows whose title contains the folder
+// name AND whose WM class matches the terminal — equivalent to an AND of two conditions
+// without relying on a fixed separator format (e.g. the em dash in VS Code titles).
+// When no folder name is available, falls back to the generic app search term.
 //
 // All terms are filtered by WM class, so browser windows are never matched.
 func TryGnomeShellEvalByTitle(terminalName, folderName string) error {
-	suffixedTerm := GetSearchTermWithFolder(terminalName, folderName)
 	wmClass := escapeJS(GetGnomeWmClass(terminalName))
 
-	// Build JS array of search terms (most-specific first).
-	var termsJS string
-	if folderName != "" && suffixedTerm != GetSearchTerm(terminalName) {
-		termsJS = fmt.Sprintf(`['%s','%s']`, escapeJS(suffixedTerm), escapeJS(folderName))
-	} else {
-		termsJS = fmt.Sprintf(`['%s']`, escapeJS(suffixedTerm))
+	// Use folderName as the title search term when available.
+	// The WM class filter already anchors the match to the correct app, so there is
+	// no need to construct a compound string like "folder — Visual Studio Code".
+	// This handles custom window title formats that insert extra segments.
+	searchTerm := folderName
+	if searchTerm == "" {
+		searchTerm = GetSearchTerm(terminalName)
 	}
+	termsJS := fmt.Sprintf(`['%s']`, escapeJS(searchTerm))
 
 	// Filter by both title substring and WM class to avoid accidentally focusing
 	// browser windows whose tab titles contain the search term (e.g. GitHub pages).
@@ -438,7 +442,7 @@ func TryGnomeShellEvalByTitle(terminalName, folderName string) error {
 
 	outputStr := string(output)
 	if strings.Contains(outputStr, "no matching window") {
-		return fmt.Errorf("no window with title containing %q (tried %d term(s))", suffixedTerm, len(strings.Split(termsJS, ",")))
+		return fmt.Errorf("no window with title containing %q", searchTerm)
 	}
 	if strings.Contains(outputStr, "false") && !strings.Contains(outputStr, "activated") {
 		return fmt.Errorf("Shell.Eval blocked (GNOME 41+ security) - install unsafe-mode-menu extension or activate-window-by-title extension")
@@ -515,15 +519,26 @@ func TryWlrctl(terminalName, folderName string) error {
 		return fmt.Errorf("wlrctl not installed")
 	}
 
-	// Try app_id first (more reliable)
 	appID := GetWlrctlAppID(terminalName)
+
+	// When a folder name is available, combine app_id and title filters (AND) to
+	// distinguish multiple windows of the same app open for different projects.
+	// wlrctl supports multiple filter arguments natively.
+	if folderName != "" {
+		cmd := exec.Command("wlrctl", "toplevel", "focus", "app_id:"+appID, "title:"+folderName)
+		if err := cmd.Run(); err == nil {
+			return nil
+		}
+	}
+
+	// Fallback: match by app_id alone (focuses whichever window is on top).
 	cmd := exec.Command("wlrctl", "toplevel", "focus", "app_id:"+appID)
 	if err := cmd.Run(); err == nil {
 		return nil
 	}
 
-	// Fallback to title
-	searchTerm := GetSearchTermWithFolder(terminalName, folderName)
+	// Last resort: title-only search using the generic app name.
+	searchTerm := GetSearchTerm(terminalName)
 	cmd = exec.Command("wlrctl", "toplevel", "focus", "title:"+searchTerm)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -612,7 +627,6 @@ type xdotoolSearch struct {
 
 func buildXdotoolSearches(terminalName, folderName string) []xdotoolSearch {
 	className := GetXdotoolClass(terminalName)
-	searchTerm := GetSearchTermWithFolder(terminalName, folderName)
 
 	searches := []xdotoolSearch{
 		{
@@ -625,17 +639,34 @@ func buildXdotoolSearches(terminalName, folderName string) []xdotoolSearch {
 		},
 	}
 
-	if searchTerm != "" {
+	if folderName != "" {
+		// AND condition: class + folder name in title independently.
+		// Distinguishes multiple windows of the same app open for different projects.
 		searches = append(searches,
 			xdotoolSearch{
-				label: "visible name search",
-				args:  []string{"search", "--onlyvisible", "--name", searchTerm},
+				label: "visible class+name search",
+				args:  []string{"search", "--all", "--onlyvisible", "--class", className, "--name", folderName},
 			},
 			xdotoolSearch{
-				label: "name search",
-				args:  []string{"search", "--name", searchTerm},
+				label: "class+name search",
+				args:  []string{"search", "--all", "--class", className, "--name", folderName},
 			},
 		)
+	} else {
+		// No folder name: fall back to generic app name search.
+		genericTerm := GetSearchTerm(terminalName)
+		if genericTerm != "" {
+			searches = append(searches,
+				xdotoolSearch{
+					label: "visible name search",
+					args:  []string{"search", "--onlyvisible", "--name", genericTerm},
+				},
+				xdotoolSearch{
+					label: "name search",
+					args:  []string{"search", "--name", genericTerm},
+				},
+			)
+		}
 	}
 
 	return searches

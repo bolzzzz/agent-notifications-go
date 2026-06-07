@@ -81,7 +81,29 @@ func TestNormalizeX11WindowID_Invalid(t *testing.T) {
 }
 
 func TestBuildXdotoolSearches_Order(t *testing.T) {
+	// With folderName: class searches first, then AND (class+name) searches.
 	searches := buildXdotoolSearches("terminator", "project")
+
+	got := make([][]string, 0, len(searches))
+	for _, search := range searches {
+		got = append(got, search.args)
+	}
+
+	want := [][]string{
+		{"search", "--onlyvisible", "--class", "Terminator"},
+		{"search", "--class", "Terminator"},
+		{"search", "--all", "--onlyvisible", "--class", "Terminator", "--name", "project"},
+		{"search", "--all", "--class", "Terminator", "--name", "project"},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("buildXdotoolSearches() with folder = %#v, want %#v", got, want)
+	}
+}
+
+func TestBuildXdotoolSearches_NoFolder(t *testing.T) {
+	// Without folderName: class searches + generic name fallback.
+	searches := buildXdotoolSearches("terminator", "")
 
 	got := make([][]string, 0, len(searches))
 	for _, search := range searches {
@@ -96,7 +118,7 @@ func TestBuildXdotoolSearches_Order(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("buildXdotoolSearches() = %#v, want %#v", got, want)
+		t.Errorf("buildXdotoolSearches() no folder = %#v, want %#v", got, want)
 	}
 }
 

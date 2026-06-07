@@ -429,6 +429,35 @@ func TestGetXdotoolClass_UnknownFallback(t *testing.T) {
 	}
 }
 
+// --- GetSearchTermWithFolder tests ---
+
+func TestGetSearchTermWithFolder_VSCode_UsesHyphen(t *testing.T) {
+	// Linux VS Code uses " - " (regular hyphen), not " — " (em dash).
+	for _, name := range []string{"code", "vscode", "visual studio code"} {
+		got := GetSearchTermWithFolder(name, "myproject")
+		want := "myproject - Visual Studio Code"
+		if got != want {
+			t.Errorf("GetSearchTermWithFolder(%q, %q) = %q, want %q", name, "myproject", got, want)
+		}
+	}
+}
+
+func TestGetSearchTermWithFolder_VSCode_NoFolder(t *testing.T) {
+	got := GetSearchTermWithFolder("code", "")
+	want := "Visual Studio Code"
+	if got != want {
+		t.Errorf("GetSearchTermWithFolder(code, empty) = %q, want %q", got, want)
+	}
+}
+
+func TestGetSearchTermWithFolder_NonVSCode(t *testing.T) {
+	got := GetSearchTermWithFolder("terminator", "myproject")
+	want := GetSearchTerm("terminator")
+	if got != want {
+		t.Errorf("GetSearchTermWithFolder(terminator, myproject) = %q, want %q", got, want)
+	}
+}
+
 // --- GetSearchTerm tests ---
 
 func TestGetSearchTerm_VSCode(t *testing.T) {

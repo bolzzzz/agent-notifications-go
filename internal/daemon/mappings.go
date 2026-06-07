@@ -227,10 +227,10 @@ func GetSearchTermWithFolder(terminalName, folderName string) string {
 	switch strings.ToLower(terminalName) {
 	case "code", "vscode", "visual studio code":
 		if folderName != "" {
-			// VS Code window titles use an em dash: "folder — Visual Studio Code".
-			// Including the suffix avoids matching browser windows whose tab title
-			// contains the folder name (e.g. a GitHub tab open for the same repo).
-			return folderName + " — Visual Studio Code"
+			// VS Code on Linux uses a regular hyphen as title separator (" - "),
+			// not an em dash (" — ") which is macOS-only. The suffix avoids
+			// matching browser tabs that contain the folder name.
+			return folderName + " - Visual Studio Code"
 		}
 	}
 	return GetSearchTerm(terminalName)
