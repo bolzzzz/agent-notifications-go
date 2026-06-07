@@ -15,12 +15,14 @@ LIST_SOUNDS_PATH=bin/$(LIST_SOUNDS)
 # Build flags
 # Development build: includes debug symbols for debugging
 # Production build: optimized for size and deployment
+GIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BO_VERSION_FLAGS=-ldflags="-X main.gitHash=$(GIT_HASH)"
 RELEASE_FLAGS=-ldflags="-s -w" -trimpath
 
 # Build targets
 build: ## Build the binaries (development mode with debug symbols)
 	@echo "Building $(BINARY), $(SOUND_PREVIEW) and $(LIST_SOUNDS) (development mode)..."
-	@go build -o $(BINARY_PATH) ./cmd/claude-notifications
+	@go build $(BO_VERSION_FLAGS) -o $(BINARY_PATH) ./cmd/claude-notifications
 	@go build -o $(SOUND_PREVIEW_PATH) ./cmd/sound-preview
 	@go build -o $(LIST_SOUNDS_PATH) ./cmd/list-sounds
 	@echo "Build complete! Binaries in bin/"

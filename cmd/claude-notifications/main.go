@@ -18,7 +18,18 @@ import (
 	"github.com/777genius/claude-notifications/internal/notifier"
 )
 
-const version = "1.39.3-bo"
+const versionBase = "1.39.3-bo"
+
+var gitHash string // injected via -ldflags "-X main.gitHash=..."
+
+func buildVersion() string {
+	if gitHash != "" {
+		return versionBase + "-" + gitHash
+	}
+	return versionBase
+}
+
+var version = buildVersion()
 const windowsLazyUpdateRetryAfter = time.Hour
 
 var (
