@@ -68,6 +68,36 @@ Focus methods (tried in order):
 
 Falls back to standard notifications if no focus tool is available.
 
+### VS Code with multiple windows (Linux GNOME Wayland)
+
+When multiple VS Code windows are open for different projects, click-to-focus
+uses the window title to identify the correct instance. The plugin searches for
+a window whose title contains **both** the project folder name and
+"Visual Studio Code", matching the window for the project that triggered the
+notification.
+
+For this to work reliably on GNOME Wayland (where `Shell.Eval` is blocked and
+the only available method is the `activate-window-by-title` extension), the
+VS Code window title must include the folder name in a predictable position.
+The plugin matches against `"folderName - Visual Studio Code"` — which is the
+default Linux separator (regular hyphen, not em dash).
+
+**Recommended VS Code title setting** (`settings.json`):
+
+```json
+"window.title": "${rootNameShort}${separator}${appName}"
+```
+
+This produces a stable title like `"myproject - Visual Studio Code"` regardless
+of which file is open. Without this setting, the default title includes the
+active filename (e.g. `"main.go - myproject - Visual Studio Code"`), which also
+works because the plugin uses substring matching.
+
+**Required extension**: install
+[activate-window-by-title](https://extensions.gnome.org/extension/5021/activate-window-by-title/)
+from the GNOME Extensions website. Without it, GNOME Wayland has no way to
+focus a specific window among multiple instances of the same app.
+
 ### Diagnostics
 
 If Linux click-to-focus focuses the wrong window, run the diagnostic script immediately after reproducing the failed click:
