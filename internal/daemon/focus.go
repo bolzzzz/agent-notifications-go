@@ -350,15 +350,6 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 		}
 	}
 
-	// Step 1.5: bare folder name search — handles apps with custom title formats that
-	// omit the app name suffix (e.g. VS Code with window.title set to just "${rootName}").
-	// More specific than WM class but less specific than "folder — AppName".
-	if folderName != "" && folderTerm != GetSearchTerm(terminalName) {
-		if gnomeActivate("activateBySubstring", folderName) {
-			return nil
-		}
-	}
-
 	// Step 2: WM class match — app-specific fallback when no folder name is available.
 	if wmClass := GetGnomeWmClass(terminalName); wmClass != "" {
 		if gnomeActivate("activateByWmClass", wmClass) {
@@ -388,30 +379,50 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 
 // TryGnomeShellEvalByTitle uses GNOME Shell's Eval to find and focus window by title.
 // Requires unsafe_mode or development-tools enabled.
+//
+// Tries search terms from most specific to least:
+//  1. folder + app suffix (e.g. "folder — Visual Studio Code")
+//  2. bare folder name — handles custom title formats that insert extra segments
+//     (e.g. "${rootName}${sep}${profileName}${sep}${appName}") where the suffix
+//     search fails but the folder name is still present.
+//
+// All terms are filtered by WM class, so browser windows are never matched.
 func TryGnomeShellEvalByTitle(terminalName, folderName string) error {
-	searchTerm := escapeJS(GetSearchTermWithFolder(terminalName, folderName))
+	suffixedTerm := GetSearchTermWithFolder(terminalName, folderName)
 	wmClass := escapeJS(GetGnomeWmClass(terminalName))
+
+	// Build JS array of search terms (most-specific first).
+	var termsJS string
+	if folderName != "" && suffixedTerm != GetSearchTerm(terminalName) {
+		termsJS = fmt.Sprintf(`['%s','%s']`, escapeJS(suffixedTerm), escapeJS(folderName))
+	} else {
+		termsJS = fmt.Sprintf(`['%s']`, escapeJS(suffixedTerm))
+	}
 
 	// Filter by both title substring and WM class to avoid accidentally focusing
 	// browser windows whose tab titles contain the search term (e.g. GitHub pages).
 	js := fmt.Sprintf(`
 		(function() {
 			let start = Date.now();
-			let found = false;
-			global.get_window_actors().forEach(function(actor) {
-				let win = actor.get_meta_window();
-				let title = win.get_title() || '';
-				let wm = (win.get_wm_class() || '').toLowerCase();
-				let titleMatch = title.indexOf('%s') !== -1;
-				let classMatch = wm.indexOf('%s') !== -1;
-				if (titleMatch && classMatch) {
-					win.activate(start);
-					found = true;
-				}
-			});
-			return found ? 'activated' : 'no matching window';
+			let terms = %s;
+			let wmClass = '%s';
+			for (let i = 0; i < terms.length; i++) {
+				let activated = false;
+				global.get_window_actors().forEach(function(actor) {
+					if (activated) return;
+					let win = actor.get_meta_window();
+					let title = win.get_title() || '';
+					let wm = (win.get_wm_class() || '').toLowerCase();
+					if (title.indexOf(terms[i]) !== -1 && wm.indexOf(wmClass) !== -1) {
+						win.activate(start);
+						activated = true;
+					}
+				});
+				if (activated) return 'activated';
+			}
+			return 'no matching window';
 		})()
-	`, searchTerm, wmClass)
+	`, termsJS, wmClass)
 
 	cmd := exec.Command("gdbus", "call",
 		"--session",
@@ -427,7 +438,7 @@ func TryGnomeShellEvalByTitle(terminalName, folderName string) error {
 
 	outputStr := string(output)
 	if strings.Contains(outputStr, "no matching window") {
-		return fmt.Errorf("no window with title containing %q", searchTerm)
+		return fmt.Errorf("no window with title containing %q (tried %d term(s))", suffixedTerm, len(strings.Split(termsJS, ",")))
 	}
 	if strings.Contains(outputStr, "false") && !strings.Contains(outputStr, "activated") {
 		return fmt.Errorf("Shell.Eval blocked (GNOME 41+ security) - install unsafe-mode-menu extension or activate-window-by-title extension")
