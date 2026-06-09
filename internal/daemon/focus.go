@@ -340,17 +340,17 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 		return err == nil && strings.Contains(strings.TrimSpace(string(output)), "true")
 	}
 
-	// Step 1: folder-specific search (e.g. "project — Visual Studio Code").
-	// When folderName is available and the terminal supports folder-specific titles
-	// (e.g. VS Code), only attempt this search. If it fails, return an error immediately
-	// rather than falling through to WM-class or generic searches — those cannot
-	// distinguish between multiple windows of the same app and would focus the wrong one.
+	// Step 1: folder-specific search (e.g. "project - Visual Studio Code").
+	// When the terminal supports folder-specific titles (e.g. VS Code), try the
+	// precise search first. If it fails (e.g. VS Code opened as a workspace whose
+	// title differs from the project folder name), fall through to WM-class and
+	// generic searches rather than aborting — a best-effort focus is better than none.
 	folderTerm := GetSearchTermWithFolder(terminalName, folderName)
 	if folderTerm != GetSearchTerm(terminalName) {
 		if gnomeActivate("activateBySubstring", folderTerm) {
 			return nil
 		}
-		return fmt.Errorf("activate-window-by-title: no window matching %q", folderTerm)
+		// Folder-specific search missed (e.g. workspace title mismatch); fall through.
 	}
 
 	// No folder-specific title available: fall back to WM class and generic searches.
