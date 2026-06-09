@@ -79,7 +79,12 @@ func TryFocusWithHints(terminalName, folderName, windowID, windowTitle, wezTermP
 		}
 	}
 
-	if !windowFocused {
+	// When a WezTerm pane ID is available, skip the generic focus loop entirely.
+	// The WezTerm-specific block below queries the mux for the exact window title and
+	// raises only that window. Running the generic loop first would raise a WezTerm
+	// instance via activateByWmClass (all instances share the same WM class), which
+	// brings the wrong window to the foreground before the correct one is raised.
+	if !windowFocused && wezTermPaneID == "" {
 		for _, method := range GetFocusMethods() {
 			if err := method.Fn(terminalName, folderName); err != nil {
 				lastErr = err
@@ -91,10 +96,9 @@ func TryFocusWithHints(terminalName, folderName, windowID, windowTitle, wezTermP
 	}
 
 	if wezTermPaneID != "" {
-		// When multiple WezTerm windows are open, activateByWmClass may have raised
-		// the wrong one (both share the same WM class). Query the mux for the window
-		// title of the specific WezTerm window containing our pane, then use
-		// activateBySubstring to bring exactly that window to the front.
+		// Query the mux for the window title of the specific WezTerm window containing
+		// our pane, then use activateBySubstring to raise exactly that window.
+		// This avoids raising the wrong instance when multiple WezTerm windows are open.
 		if wt := wezTermWindowTitle(wezTermPaneID, wezTermSocket); wt != "" {
 			cmd := exec.Command("busctl", "--user", "call",
 				"org.gnome.Shell",
