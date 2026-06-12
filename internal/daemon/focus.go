@@ -38,16 +38,17 @@ func GetFocusMethods() []FocusMethod {
 // folderName is the project folder name used for title-based window search (may be empty).
 // It tries each method in order until one succeeds.
 func TryFocus(terminalName, folderName string) error {
-	return TryFocusWithHints(terminalName, folderName, "", "", "", "")
+	return TryFocusWithHints(terminalName, folderName, "", "", "", "", "")
 }
 
 // TryFocusWithWindowID preserves the previous API for callers that only have an exact X11 window ID.
 func TryFocusWithWindowID(terminalName, folderName, windowID string) error {
-	return TryFocusWithHints(terminalName, folderName, windowID, "", "", "")
+	return TryFocusWithHints(terminalName, folderName, "", windowID, "", "", "")
 }
 
 // TryFocusWithHints attempts exact focus using hook-time hints first, then falls back to
 // compositor-specific methods.
+// workspaceName is the VS Code workspace name to try if folderName-based search fails.
 // wezTermPaneID and wezTermSocket enable tab-level focus for WezTerm.
 //
 // For WezTerm, window-level focus runs first, then the pane switch runs after a short
@@ -56,7 +57,7 @@ func TryFocusWithWindowID(terminalName, folderName, windowID string) error {
 // switch runs first. Running the pane switch last ensures it wins.
 // If all window-level methods fail but a pane ID is available, TryWezTermPane is tried
 // as a last resort (activate-pane also raises the window on WezTerm).
-func TryFocusWithHints(terminalName, folderName, windowID, windowTitle, wezTermPaneID, wezTermSocket string) error {
+func TryFocusWithHints(terminalName, folderName, workspaceName, windowID, windowTitle, wezTermPaneID, wezTermSocket string) error {
 	wezTermPaneID, wezTermSocket = normalizeWezTermFocusHints(terminalName, wezTermPaneID, wezTermSocket)
 	windowFocused := false
 	var exactErr, lastErr error
@@ -85,6 +86,7 @@ func TryFocusWithHints(terminalName, folderName, windowID, windowTitle, wezTermP
 	// instance via activateByWmClass (all instances share the same WM class), which
 	// brings the wrong window to the foreground before the correct one is raised.
 	if !windowFocused && wezTermPaneID == "" {
+		// First pass: try with folderName (cwd base, e.g. "mmw-mlops").
 		for _, method := range GetFocusMethods() {
 			if err := method.Fn(terminalName, folderName); err != nil {
 				lastErr = err
@@ -92,6 +94,19 @@ func TryFocusWithHints(terminalName, folderName, windowID, windowTitle, wezTermP
 			}
 			windowFocused = true
 			break
+		}
+		// Second pass: if all failed and a workspace name is available, retry with it.
+		// Handles VS Code workspaces where the window title uses the workspace name
+		// (e.g. "bo-workspace") while the cwd is a subfolder (e.g. "mmw-mlops").
+		if !windowFocused && workspaceName != "" && workspaceName != folderName {
+			for _, method := range GetFocusMethods() {
+				if err := method.Fn(terminalName, workspaceName); err != nil {
+					lastErr = err
+					continue
+				}
+				windowFocused = true
+				break
+			}
 		}
 	}
 

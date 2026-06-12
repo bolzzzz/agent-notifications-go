@@ -84,16 +84,16 @@ func sendViaDaemon(title, body, cwd string) error {
 	focusTarget := daemon.GetTerminalName()
 
 	// Extract folder name from cwd for title-based window focus.
-	// For VS Code, walk parent directories for a .code-workspace file: workspace sessions
-	// use the workspace name (e.g. "bo-workspace") as the window title root, not the cwd
-	// subfolder name (e.g. "mmw-mlops").
+	// For VS Code workspaces, also detect the workspace name as a fallback: the window
+	// title uses the workspace name (e.g. "bo-workspace") when Claude navigates into a
+	// subfolder (e.g. "mmw-mlops"). Both are sent so the daemon tries folderName first,
+	// then workspaceName if the folderName search finds no window.
 	folderName := ""
+	workspaceName := ""
 	if cwd != "" {
 		folderName = filepath.Base(cwd)
 		if daemon.IsVSCodeTerminalName(focusTarget) {
-			if wsName := detectVSCodeWorkspaceName(cwd); wsName != "" {
-				folderName = wsName
-			}
+			workspaceName = detectVSCodeWorkspaceName(cwd)
 		}
 	}
 	focusWindowID := daemon.GetX11WindowID()
@@ -105,7 +105,7 @@ func sendViaDaemon(title, body, cwd string) error {
 	// Capture WezTerm pane info only when the focus target is actually WezTerm.
 	wezTermPaneID, wezTermSocket := daemon.GetWezTermFocusHints(focusTarget)
 
-	_, err = client.SendNotification(title, body, focusTarget, folderName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, 2, 30)
+	_, err = client.SendNotification(title, body, focusTarget, folderName, workspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, 2, 30)
 	return err
 }
 
