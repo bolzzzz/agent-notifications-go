@@ -321,6 +321,16 @@ func GetWezTermSocketPath() string {
 	return strings.TrimSpace(os.Getenv("WEZTERM_UNIX_SOCKET"))
 }
 
+// IsVSCodeTerminalName reports whether terminalName identifies VS Code.
+func IsVSCodeTerminalName(terminalName string) bool {
+	switch strings.ToLower(strings.TrimSpace(terminalName)) {
+	case "code", "vscode", "visual studio code":
+		return true
+	default:
+		return false
+	}
+}
+
 // IsWezTermTerminalName reports whether terminalName identifies WezTerm.
 func IsWezTermTerminalName(terminalName string) bool {
 	switch strings.ToLower(strings.TrimSpace(terminalName)) {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/777genius/claude-notifications/internal/config"
 	"github.com/777genius/claude-notifications/internal/daemon"
@@ -77,16 +78,24 @@ func sendViaDaemon(title, body, cwd string) error {
 		return err
 	}
 
-	// Extract folder name from cwd for title-based window focus
-	folderName := ""
-	if cwd != "" {
-		folderName = filepath.Base(cwd)
-	}
-
 	// Send notification with 30 second timeout.
 	// Detect focus target in the hook process (not the daemon), since the daemon may
 	// have been started from a different environment.
 	focusTarget := daemon.GetTerminalName()
+
+	// Extract folder name from cwd for title-based window focus.
+	// For VS Code, walk parent directories for a .code-workspace file: workspace sessions
+	// use the workspace name (e.g. "bo-workspace") as the window title root, not the cwd
+	// subfolder name (e.g. "mmw-mlops").
+	folderName := ""
+	if cwd != "" {
+		folderName = filepath.Base(cwd)
+		if daemon.IsVSCodeTerminalName(focusTarget) {
+			if wsName := detectVSCodeWorkspaceName(cwd); wsName != "" {
+				folderName = wsName
+			}
+		}
+	}
 	focusWindowID := daemon.GetX11WindowID()
 	focusWindowTitle := daemon.GetExactWindowTitle(focusTarget)
 	if sessionType := os.Getenv("XDG_SESSION_TYPE"); sessionType != "" && sessionType != "x11" {
@@ -115,4 +124,37 @@ func StartDaemon() bool {
 // StopDaemon stops the running notification daemon.
 func StopDaemon() error {
 	return daemon.StopDaemon()
+}
+
+// detectVSCodeWorkspaceName walks parent directories of cwd looking for a
+// .code-workspace file. Returns the workspace name (filename without extension)
+// if found, or empty string otherwise. Stops at the user's home directory.
+func detectVSCodeWorkspaceName(cwd string) string {
+	if cwd == "" {
+		return ""
+	}
+	homeDir, _ := os.UserHomeDir()
+	dir := cwd
+	for i := 0; i < 8; i++ {
+		if homeDir != "" && dir == homeDir {
+			break
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			break
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".code-workspace") {
+				if name := strings.TrimSuffix(entry.Name(), ".code-workspace"); name != "" {
+					return name
+				}
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
 }
