@@ -344,17 +344,31 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 		return err == nil && strings.Contains(strings.TrimSpace(string(output)), "true")
 	}
 
-	// Step 1: folder-specific search (e.g. "project - Visual Studio Code").
-	// When the terminal supports folder-specific titles (e.g. VS Code), try the
-	// precise search first. If it fails (e.g. VS Code opened as a workspace whose
-	// title differs from the project folder name), fall through to WM-class and
-	// generic searches rather than aborting — a best-effort focus is better than none.
+	// Step 1: folder-specific searches (e.g. "project - Visual Studio Code" and
+	// "project (Workspace) - Visual Studio Code").
+	// Try precise title matches first. When folderName is available we must NOT fall
+	// through to activateByWmClass on failure — WmClass raises an arbitrary window of
+	// the same app, which focuses the wrong instance when multiple windows are open.
+	// The workspace variant handles VS Code opened via a .code-workspace file, where
+	// the window title is "{name} (Workspace) - Visual Studio Code" instead of the
+	// plain folder format.
 	folderTerm := GetSearchTermWithFolder(terminalName, folderName)
-	if folderTerm != GetSearchTerm(terminalName) {
+	hasFolderSearch := folderTerm != GetSearchTerm(terminalName)
+	if hasFolderSearch {
 		if gnomeActivate("activateBySubstring", folderTerm) {
 			return nil
 		}
-		// Folder-specific search missed (e.g. workspace title mismatch); fall through.
+		// Also try the VS Code workspace-mode title format.
+		if workspaceTerm := GetSearchTermWorkspace(terminalName, folderName); workspaceTerm != "" {
+			if gnomeActivate("activateBySubstring", workspaceTerm) {
+				return nil
+			}
+		}
+		// Both folder-specific searches failed. Return an error so subsequent focus
+		// methods (TryGnomeShellEvalByTitle, etc.) can attempt their own strategies.
+		// Do NOT fall through to activateByWmClass here — that would focus the wrong
+		// window when multiple instances of the same app are open.
+		return fmt.Errorf("activate-window-by-title: no window matching %q or workspace variant", folderTerm)
 	}
 
 	// No folder-specific title available: fall back to WM class and generic searches.

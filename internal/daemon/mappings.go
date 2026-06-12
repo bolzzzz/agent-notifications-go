@@ -236,6 +236,20 @@ func GetSearchTermWithFolder(terminalName, folderName string) string {
 	return GetSearchTerm(terminalName)
 }
 
+// GetSearchTermWorkspace returns the VS Code workspace-mode window title search term.
+// When VS Code opens a .code-workspace file, the title becomes "{name} (Workspace) - Visual Studio Code"
+// rather than "{folder} - Visual Studio Code". Returns empty string for non-VS Code terminals
+// or when no folder name is provided.
+func GetSearchTermWorkspace(terminalName, folderName string) string {
+	switch strings.ToLower(terminalName) {
+	case "code", "vscode", "visual studio code":
+		if folderName != "" {
+			return folderName + " (Workspace) - Visual Studio Code"
+		}
+	}
+	return ""
+}
+
 // GetTerminalName detects the current terminal from environment variables.
 func GetTerminalName() string {
 	// Try TERM_PROGRAM first (set by many terminals)
