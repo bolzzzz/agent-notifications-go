@@ -74,7 +74,7 @@ func isTimeSensitiveStatus(status analyzer.Status) bool {
 // Script Editor attribution and optionally enables click-to-focus.
 // On Linux with clickToFocus enabled, it uses the background daemon.
 // cwd is the working directory of the project; used for window-specific focus. May be empty.
-func (n *Notifier) SendDesktop(status analyzer.Status, message, sessionID, cwd string) error {
+func (n *Notifier) SendDesktop(status analyzer.Status, message, sessionID, cwd, initialCWD string) error {
 	// Send terminal bell for terminal tab indicators (e.g. Ghostty, tmux)
 	if n.cfg.IsTerminalBellEnabled() {
 		sendTerminalBell()
@@ -155,7 +155,7 @@ func (n *Notifier) SendDesktop(status analyzer.Status, message, sessionID, cwd s
 
 	// Linux: Try daemon for click-to-focus support
 	if platform.IsLinux() && n.cfg.Notifications.Desktop.ClickToFocus {
-		if err := sendLinuxNotification(title, cleanMessage, appIcon, n.cfg, cwd); err != nil {
+		if err := sendLinuxNotification(title, cleanMessage, appIcon, n.cfg, cwd, initialCWD); err != nil {
 			logging.Warn("Linux daemon notification failed, falling back to beeep: %v", err)
 			// Fall through to beeep
 		} else {

@@ -42,7 +42,7 @@ type HookData struct {
 
 // notifierInterface defines the interface for sending desktop notifications
 type notifierInterface interface {
-	SendDesktop(status analyzer.Status, message, sessionID, cwd string) error
+	SendDesktop(status analyzer.Status, message, sessionID, cwd, initialCWD string) error
 	Close() error
 }
 
@@ -144,6 +144,14 @@ func (h *Handler) HandleHook(hookEvent string, input io.Reader) error {
 	if hookData.SessionID == "" {
 		hookData.SessionID = "unknown"
 		logging.Warn("Session ID is empty, using 'unknown'")
+	}
+
+	if err := h.stateMgr.RecordInitialCWD(hookData.SessionID, hookData.CWD); err != nil {
+		logging.Warn("Failed to record initial cwd: %v", err)
+	}
+	if hookEvent == "SessionStart" {
+		logging.Debug("SessionStart: initial cwd recorded: %s", hookData.CWD)
+		return nil
 	}
 
 	if h.cfg.Notifications.Desktop.ClickToFocus && (hookEvent == "PreToolUse" || hookEvent == "Notification") {
@@ -389,7 +397,13 @@ func (h *Handler) HandleHook(hookEvent string, input io.Reader) error {
 
 	// Send notifications
 	bench.Start("notify.send")
-	h.sendNotifications(status, body, actions, hookData.SessionID, hookData.CWD)
+	initialCWD := hookData.CWD
+	if sessionState, err := h.stateMgr.Load(hookData.SessionID); err != nil {
+		logging.Warn("Failed to load initial cwd: %v", err)
+	} else if sessionState != nil && strings.TrimSpace(sessionState.InitialCWD) != "" {
+		initialCWD = sessionState.InitialCWD
+	}
+	h.sendNotifications(status, body, actions, hookData.SessionID, hookData.CWD, initialCWD)
 	bench.Elapsed("notify.send")
 
 	logging.Debug("=== Hook completed: %s ===", hookEvent)
@@ -482,7 +496,7 @@ func (h *Handler) handleTeammateIdle(hookData *HookData) error {
 	status := analyzer.StatusTaskComplete
 	body := fmt.Sprintf("Team %q: all teammates finished work", hookData.TeamName)
 
-	h.sendNotifications(status, body, "", hookData.SessionID, hookData.CWD)
+	h.sendNotifications(status, body, "", hookData.SessionID, hookData.CWD, hookData.CWD)
 
 	logging.Debug("=== Hook completed: TeammateIdle (team notification sent) ===")
 	return nil
@@ -553,7 +567,7 @@ func joinMessageParts(body, actions string) string {
 //
 // body is the summary text (no metadata prefix, no action segments).
 // actions is the formatted action summary (e.g. "📝 1 new  ▶ 2 cmds  ⏱ 41s") or "".
-func (h *Handler) sendNotifications(status analyzer.Status, body, actions, sessionID, cwd string) {
+func (h *Handler) sendNotifications(status analyzer.Status, body, actions, sessionID, cwd, initialCWD string) {
 	// Add panic recovery to prevent notification failures from crashing the plugin
 	defer errorhandler.HandlePanic()
 
@@ -577,7 +591,7 @@ func (h *Handler) sendNotifications(status analyzer.Status, body, actions, sessi
 
 	// Send desktop notification (check per-status enabled)
 	if h.cfg.IsStatusDesktopEnabled(statusStr) {
-		if err := h.notifierSvc.SendDesktop(status, enhancedMessage, sessionID, cwd); err != nil {
+		if err := h.notifierSvc.SendDesktop(status, enhancedMessage, sessionID, cwd, initialCWD); err != nil {
 			h.maybeEmitDesktopPermissionGuidance(err)
 			errorhandler.HandleError(err, "Failed to send desktop notification")
 		}
@@ -618,8 +632,9 @@ func (h *Handler) cleanupOldLocks() {
 		logging.Warn("Failed to cleanup old locks: %v", err)
 	}
 
-	// Cleanup old state files (older than 60 seconds)
-	if err := h.stateMgr.Cleanup(60); err != nil {
+	// Cleanup old state files. Keep these long enough to preserve initial_cwd
+	// for long-running sessions; lock files above still age out quickly.
+	if err := h.stateMgr.Cleanup(24 * 60 * 60); err != nil {
 		logging.Warn("Failed to cleanup old state files: %v", err)
 	}
 }

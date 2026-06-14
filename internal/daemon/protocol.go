@@ -49,7 +49,8 @@ type NotifyRequest struct {
 	Title              string `json:"title"`
 	Body               string `json:"body"`
 	FocusTarget        string `json:"focus_target"`                    // Terminal identifier (empty = auto-detect)
-	FocusFolder        string `json:"focus_folder,omitempty"`          // Project folder name for window-specific focus (cwd base)
+	FocusFolder        string `json:"focus_folder,omitempty"`          // Session/project folder name for window-specific focus (initial cwd base)
+	FocusCWDFolder     string `json:"focus_cwd_folder,omitempty"`      // Current cwd folder name for fallback focus after Bash cd
 	FocusWorkspaceName string `json:"focus_workspace_name,omitempty"`  // VS Code workspace name (.code-workspace filename without extension)
 	FocusWindowID      string `json:"focus_window_id,omitempty"`       // Exact X11 window ID captured in the hook process
 	FocusWindowTitle   string `json:"focus_window_title,omitempty"`    // Exact window title captured in the hook process when available

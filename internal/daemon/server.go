@@ -23,6 +23,7 @@ import (
 type focusInfo struct {
 	target        string
 	folder        string
+	cwdFolder     string
 	workspaceName string
 	windowID      string
 	windowTitle   string
@@ -319,6 +320,7 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 	s.focusCtx[id] = focusInfo{
 		target:        focusTarget,
 		folder:        req.FocusFolder,
+		cwdFolder:     req.FocusCWDFolder,
 		workspaceName: req.FocusWorkspaceName,
 		windowID:      req.FocusWindowID,
 		windowTitle:   req.FocusWindowTitle,
@@ -328,8 +330,8 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 	}
 	s.focusCtxMu.Unlock()
 
-	log.Printf("[INFO] Notification sent: ID=%d (replaces=%d), focus_target=%s, focus_folder=%s, focus_workspace=%s, focus_window_id=%s, focus_window_title=%q, wezterm_pane=%s",
-		id, replacesID, focusTarget, req.FocusFolder, req.FocusWorkspaceName, req.FocusWindowID, req.FocusWindowTitle, req.FocusWezTermPaneID)
+	log.Printf("[INFO] Notification sent: ID=%d (replaces=%d), focus_target=%s, focus_folder=%s, focus_cwd_folder=%s, focus_workspace=%s, focus_window_id=%s, focus_window_title=%q, wezterm_pane=%s",
+		id, replacesID, focusTarget, req.FocusFolder, req.FocusCWDFolder, req.FocusWorkspaceName, req.FocusWindowID, req.FocusWindowTitle, req.FocusWezTermPaneID)
 
 	return &NotifyResponse{
 		Success:        true,
@@ -351,6 +353,7 @@ func (s *Server) onActionInvoked(sig *notify.ActionInvokedSignal) {
 	s.focusCtxMu.RUnlock()
 	focusTarget := info.target
 	focusFolder := info.folder
+	focusCWDFolder := info.cwdFolder
 	focusWorkspaceName := info.workspaceName
 	focusWindowID := info.windowID
 	focusWindowTitle := info.windowTitle
@@ -363,9 +366,9 @@ func (s *Server) onActionInvoked(sig *notify.ActionInvokedSignal) {
 	}
 
 	// Attempt to focus
-	log.Printf("[INFO] Attempting to focus: %s (folder: %s, workspace: %s, window_id: %s, window_title: %q, wezterm_pane: %s)",
-		focusTarget, focusFolder, focusWorkspaceName, focusWindowID, focusWindowTitle, wezTermPaneID)
-	if err := TryFocusWithHints(focusTarget, focusFolder, focusWorkspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket); err != nil {
+	log.Printf("[INFO] Attempting to focus: %s (folder: %s, cwd_folder: %s, workspace: %s, window_id: %s, window_title: %q, wezterm_pane: %s)",
+		focusTarget, focusFolder, focusCWDFolder, focusWorkspaceName, focusWindowID, focusWindowTitle, wezTermPaneID)
+	if err := TryFocusWithHints(focusTarget, focusFolder, focusCWDFolder, focusWorkspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket); err != nil {
 		log.Printf("[ERROR] Focus failed: %v", err)
 	} else {
 		log.Printf("[INFO] Focus succeeded")

@@ -21,6 +21,7 @@ type SessionState struct {
 	LastNotificationStatus  string `json:"last_notification_status,omitempty"`
 	LastNotificationMessage string `json:"last_notification_message,omitempty"`
 	GhosttyTerminalID       string `json:"ghostty_terminal_id,omitempty"`
+	InitialCWD              string `json:"initial_cwd,omitempty"`
 	CWD                     string `json:"cwd"`
 }
 
@@ -92,6 +93,31 @@ func (m *Manager) Delete(sessionID string) error {
 	return nil
 }
 
+// RecordInitialCWD stores the first cwd seen for a Claude session.
+func (m *Manager) RecordInitialCWD(sessionID, cwd string) error {
+	if strings.TrimSpace(cwd) == "" {
+		return nil
+	}
+
+	state, err := m.Load(sessionID)
+	if err != nil {
+		return err
+	}
+
+	if state == nil {
+		state = &SessionState{
+			SessionID: sessionID,
+		}
+	}
+
+	if strings.TrimSpace(state.InitialCWD) == "" {
+		state.InitialCWD = cwd
+	}
+	state.CWD = cwd
+
+	return m.Save(state)
+}
+
 // UpdateInteractiveTool updates the last interactive tool and timestamp
 func (m *Manager) UpdateInteractiveTool(sessionID, toolName, cwd string) error {
 	state, err := m.Load(sessionID)
@@ -105,6 +131,9 @@ func (m *Manager) UpdateInteractiveTool(sessionID, toolName, cwd string) error {
 		}
 	}
 
+	if strings.TrimSpace(state.InitialCWD) == "" && strings.TrimSpace(cwd) != "" {
+		state.InitialCWD = cwd
+	}
 	state.LastInteractiveTool = toolName
 	state.LastTimestamp = platform.CurrentTimestamp()
 	state.CWD = cwd

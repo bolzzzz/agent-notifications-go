@@ -45,7 +45,7 @@ type notificationCall struct {
 	cwd     string
 }
 
-func (m *mockNotifier) SendDesktop(status analyzer.Status, message, sessionID, cwd string) error {
+func (m *mockNotifier) SendDesktop(status analyzer.Status, message, sessionID, cwd, initialCWD string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

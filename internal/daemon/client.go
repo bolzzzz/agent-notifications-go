@@ -35,8 +35,9 @@ func NewClient() (*Client, error) {
 }
 
 // SendNotification sends a notification request to the daemon.
-// focusFolder is the project folder name for window-specific focus (cwd base, may be empty).
-// focusWorkspaceName is the VS Code workspace name to try if focusFolder search fails (may be empty).
+// focusFolder is the session/project folder name for window-specific focus (initial cwd base, may be empty).
+// focusCWDFolder is the current cwd folder name to try if focusFolder search fails (may be empty).
+// focusWorkspaceName is the VS Code workspace name to try if folder searches fail (may be empty).
 // focusWindowID and focusWindowTitle are optional exact window hints captured in the hook process.
 // wezTermPaneID and wezTermSocket are WezTerm-specific hints for tab-level focus (may be empty).
 // urgency is the D-Bus urgency hint: 0=low, 1=normal, 2=critical.
@@ -45,6 +46,7 @@ func (c *Client) SendNotification(
 	body,
 	focusTarget,
 	focusFolder,
+	focusCWDFolder,
 	focusWorkspaceName,
 	focusWindowID,
 	focusWindowTitle,
@@ -61,6 +63,7 @@ func (c *Client) SendNotification(
 			Body:               body,
 			FocusTarget:        focusTarget,
 			FocusFolder:        focusFolder,
+			FocusCWDFolder:     focusCWDFolder,
 			FocusWorkspaceName: focusWorkspaceName,
 			FocusWindowID:      focusWindowID,
 			FocusWindowTitle:   focusWindowTitle,

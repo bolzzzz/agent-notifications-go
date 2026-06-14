@@ -43,8 +43,9 @@ func EnsureClaudeNotificationsApp() error {
 // sendLinuxNotification sends a notification on Linux.
 // When clickToFocus is enabled, uses the daemon for click-to-focus support.
 // Falls back to beeep when daemon is unavailable.
-// cwd is the working directory of the project; used for window-specific focus. May be empty.
-func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd string) error {
+// cwd is the current working directory; initialCWD is the first cwd seen for this session.
+// Both are used for window-specific focus. Either may be empty.
+func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd, initialCWD string) error {
 	// If click-to-focus is disabled, use beeep directly
 	if !cfg.Notifications.Desktop.ClickToFocus {
 		logging.Debug("Click-to-focus disabled, using beeep directly")
@@ -52,7 +53,7 @@ func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd 
 	}
 
 	// Try to use daemon for click-to-focus
-	if err := sendViaDaemon(title, body, cwd); err == nil {
+	if err := sendViaDaemon(title, body, cwd, initialCWD); err == nil {
 		logging.Debug("Notification sent via daemon with click-to-focus support")
 		return nil
 	} else {
@@ -65,8 +66,9 @@ func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd 
 
 // sendViaDaemon sends a notification via the background daemon.
 // Returns an error if daemon is not available or fails.
-// cwd is used to extract the project folder name for window-specific focus.
-func sendViaDaemon(title, body, cwd string) error {
+// cwd is used for the current-folder focus hint; initialCWD is used for the
+// session/project-folder focus hint.
+func sendViaDaemon(title, body, cwd, initialCWD string) error {
 	// Start daemon on-demand (no-op if already running)
 	if !daemon.StartDaemonOnDemand() {
 		return daemon.ErrDaemonNotAvailable
@@ -83,15 +85,20 @@ func sendViaDaemon(title, body, cwd string) error {
 	// have been started from a different environment.
 	focusTarget := daemon.GetTerminalName()
 
-	// Extract folder name from cwd for title-based window focus.
-	// For VS Code workspaces, also detect the workspace name as a fallback: the window
-	// title uses the workspace name (e.g. "bo-workspace") when Claude navigates into a
-	// subfolder (e.g. "mmw-mlops"). Both are sent so the daemon tries folderName first,
-	// then workspaceName if the folderName search finds no window.
+	// Extract both the session/project folder and the current cwd folder for
+	// title-based focus. Claude Code's hook cwd can change after Bash cd commands;
+	// initialCWD preserves the folder where the session started.
 	folderName := ""
+	cwdFolderName := ""
 	workspaceName := ""
+	if initialCWD != "" {
+		folderName = filepath.Base(initialCWD)
+	}
 	if cwd != "" {
-		folderName = filepath.Base(cwd)
+		cwdFolderName = filepath.Base(cwd)
+		if folderName == "" {
+			folderName = cwdFolderName
+		}
 		if daemon.IsVSCodeTerminalName(focusTarget) {
 			workspaceName = detectVSCodeWorkspaceName(cwd)
 		}
@@ -105,7 +112,7 @@ func sendViaDaemon(title, body, cwd string) error {
 	// Capture WezTerm pane info only when the focus target is actually WezTerm.
 	wezTermPaneID, wezTermSocket := daemon.GetWezTermFocusHints(focusTarget)
 
-	_, err = client.SendNotification(title, body, focusTarget, folderName, workspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, 2, 30)
+	_, err = client.SendNotification(title, body, focusTarget, folderName, cwdFolderName, workspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, 2, 30)
 	return err
 }
 

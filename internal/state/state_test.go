@@ -102,6 +102,7 @@ func TestManager_UpdateInteractiveTool_NewState(t *testing.T) {
 
 	assert.Equal(t, sessionID, state.SessionID)
 	assert.Equal(t, "ExitPlanMode", state.LastInteractiveTool)
+	assert.Equal(t, "/test/dir", state.InitialCWD)
 	assert.Equal(t, "/test/dir", state.CWD)
 	assert.Greater(t, state.LastTimestamp, int64(0))
 }
@@ -115,6 +116,7 @@ func TestManager_UpdateInteractiveTool_ExistingState(t *testing.T) {
 	initial := &SessionState{
 		SessionID:            sessionID,
 		LastTaskCompleteTime: 12345,
+		InitialCWD:           "/initial/dir",
 	}
 	err := mgr.Save(initial)
 	require.NoError(t, err)
@@ -129,10 +131,29 @@ func TestManager_UpdateInteractiveTool_ExistingState(t *testing.T) {
 	require.NotNil(t, state)
 
 	assert.Equal(t, "AskUserQuestion", state.LastInteractiveTool)
+	assert.Equal(t, "/initial/dir", state.InitialCWD)
 	assert.Equal(t, "/new/dir", state.CWD)
 	assert.Greater(t, state.LastTimestamp, int64(0))
 	// Existing fields should be preserved
 	assert.Equal(t, int64(12345), state.LastTaskCompleteTime)
+}
+
+func TestManager_RecordInitialCWD_PreservesFirstValue(t *testing.T) {
+	mgr := NewManager()
+	sessionID := "test-record-initial-cwd"
+	defer func() { _ = mgr.Delete(sessionID) }()
+
+	err := mgr.RecordInitialCWD(sessionID, "/folderA")
+	require.NoError(t, err)
+	err = mgr.RecordInitialCWD(sessionID, "/folderA/subFolderB")
+	require.NoError(t, err)
+
+	state, err := mgr.Load(sessionID)
+	require.NoError(t, err)
+	require.NotNil(t, state)
+
+	assert.Equal(t, "/folderA", state.InitialCWD)
+	assert.Equal(t, "/folderA/subFolderB", state.CWD)
 }
 
 func TestManager_UpdateGhosttyTerminalID_PreservesExistingFields(t *testing.T) {
