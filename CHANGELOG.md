@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.39.4] - 2026-06-13
+
+### Fixed
+- **Windows: notification sounds now survive toast false-positive errors** - sound playback is independent from `beeep.Notify`, so Windows `doc.LoadXml(tmpl)` false positives no longer drop the audio cue while the toast is delivered ([#90](https://github.com/777genius/claude-notifications-go/issues/90), [#91](https://github.com/777genius/claude-notifications-go/pull/91))
+- **Windows: toast delivery is more resilient to go-toast COM fallback noise** - Windows beeep calls now pin the OS thread around WinRT/COM notification delivery and downgrade successful PowerShell fallback `doc.LoadXml(tmpl)` errors to warnings instead of failed desktop notifications ([#90](https://github.com/777genius/claude-notifications-go/issues/90))
+- **Linux: Konsole click-to-focus now detects KDE terminal sessions** - terminal detection recognizes `KONSOLE_VERSION` and `KONSOLE_DBUS_SESSION`, allowing KDE/Wayland focus helpers to search for the correct `konsole` window class ([#92](https://github.com/777genius/claude-notifications-go/pull/92))
+
 ## [1.39.3] - 2026-05-28
 
 ### Fixed

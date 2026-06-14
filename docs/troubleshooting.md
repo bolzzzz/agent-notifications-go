@@ -203,7 +203,7 @@ This workaround is based on confirmed Windows 11 behavior from [issue #73](https
 
 ### Note about beeep logs
 
-If the log contains `beeep.Notify failed on windows: doc.LoadXml(tmpl)` but the toast still appears, treat it as a harmless Windows notifier false positive. Investigate it only if no popup appears.
+If the log contains `beeep.Notify returned a Windows toast false positive after PowerShell fallback`, the COM toast path failed but the PowerShell fallback returned success. Treat it as harmless unless no popup appears.
 
 ## Windows / Git Bash: binary download fails from GitHub Releases
 

@@ -256,6 +256,129 @@ func TestSendWithBeeep_RestoresAppName(t *testing.T) {
 	beeep.AppName = originalAppName
 }
 
+func TestSendWithBeeep_WindowsToastFallbackSuccess(t *testing.T) {
+	withNotifierGOOS(t, "windows")
+	cfg := config.DefaultConfig()
+	cfg.Notifications.Desktop.Sound = false
+	n := New(cfg)
+
+	originalAppName := beeep.AppName
+	testAppName := "test-windows-fallback"
+	beeep.AppName = testAppName
+	t.Cleanup(func() {
+		beeep.AppName = originalAppName
+	})
+
+	var called bool
+	withBeeepNotify(t, func(title, message string, icon any) error {
+		called = true
+		if beeep.AppName != "Claude Code Notifications" {
+			t.Fatalf("beeep.AppName during Notify = %q, want fixed Windows app name", beeep.AppName)
+		}
+		return errors.Join(fmt.Errorf("doc.LoadXml(tmpl): error 3222070623"))
+	})
+
+	err := n.sendWithBeeep("🔍 Review", "Test Message", "", "")
+	if err != nil {
+		t.Fatalf("sendWithBeeep returned %v, want nil for successful PowerShell fallback", err)
+	}
+	if !called {
+		t.Fatal("beeepNotify was not called")
+	}
+	if beeep.AppName != testAppName {
+		t.Errorf("beeep.AppName not restored: got %q, want %q", beeep.AppName, testAppName)
+	}
+}
+
+func TestSendWithBeeep_WindowsToastFallbackFailure(t *testing.T) {
+	withNotifierGOOS(t, "windows")
+	cfg := config.DefaultConfig()
+	cfg.Notifications.Desktop.Sound = false
+	n := New(cfg)
+
+	withBeeepNotify(t, func(title, message string, icon any) error {
+		return errors.Join(
+			fmt.Errorf("doc.LoadXml(tmpl): error 3222070623"),
+			fmt.Errorf("executing powershell: exit status 1"),
+		)
+	})
+
+	err := n.sendWithBeeep("🔍 Review", "Test Message", "", "")
+	if err == nil {
+		t.Fatal("sendWithBeeep returned nil, want error when COM and PowerShell fallback both fail")
+	}
+}
+
+func TestIsWindowsToastFallbackSuccess(t *testing.T) {
+	tests := []struct {
+		name string
+		goos string
+		err  error
+		want bool
+	}{
+		{
+			name: "windows joined loadxml only",
+			goos: "windows",
+			err:  errors.Join(fmt.Errorf("doc.LoadXml(tmpl): error 3222070623")),
+			want: true,
+		},
+		{
+			name: "windows joined loadxml plus powershell failure",
+			goos: "windows",
+			err: errors.Join(
+				fmt.Errorf("doc.LoadXml(tmpl): error 3222070623"),
+				fmt.Errorf("executing powershell: exit status 1"),
+			),
+			want: false,
+		},
+		{
+			name: "windows non joined loadxml",
+			goos: "windows",
+			err:  fmt.Errorf("doc.LoadXml(tmpl): error 3222070623"),
+			want: false,
+		},
+		{
+			name: "darwin joined loadxml only",
+			goos: "darwin",
+			err:  errors.Join(fmt.Errorf("doc.LoadXml(tmpl): error 3222070623")),
+			want: false,
+		},
+		{
+			name: "windows unrelated error",
+			goos: "windows",
+			err:  errors.Join(fmt.Errorf("notifier.Show(): access denied")),
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withNotifierGOOS(t, tt.goos)
+			if got := isWindowsToastFallbackSuccess(tt.err); got != tt.want {
+				t.Errorf("isWindowsToastFallbackSuccess() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func withNotifierGOOS(t *testing.T, goos string) {
+	t.Helper()
+	old := notifierGOOS
+	notifierGOOS = goos
+	t.Cleanup(func() {
+		notifierGOOS = old
+	})
+}
+
+func withBeeepNotify(t *testing.T, fn func(title, message string, icon any) error) {
+	t.Helper()
+	old := beeepNotify
+	beeepNotify = fn
+	t.Cleanup(func() {
+		beeepNotify = old
+	})
+}
+
 func TestNotifier_NewWithClickToFocusConfig(t *testing.T) {
 	tests := []struct {
 		name         string

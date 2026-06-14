@@ -272,6 +272,11 @@ func GetTerminalName() string {
 		return "terminator"
 	}
 
+	// Check Konsole (does not set TERM_PROGRAM, but sets KONSOLE_* vars)
+	if os.Getenv("KONSOLE_VERSION") != "" || os.Getenv("KONSOLE_DBUS_SESSION") != "" {
+		return "konsole"
+	}
+
 	// Fallback to generic terminal
 	return "Terminal"
 }

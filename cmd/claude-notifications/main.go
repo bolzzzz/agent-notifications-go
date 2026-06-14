@@ -18,7 +18,7 @@ import (
 	"github.com/777genius/claude-notifications/internal/notifier"
 )
 
-const versionBase = "1.39.3-bo"
+const versionBase = "1.39.4-bo"
 
 var gitHash string // injected via -ldflags "-X main.gitHash=..."
 

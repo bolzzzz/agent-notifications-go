@@ -17,6 +17,8 @@ func saveTerminalEnv(t *testing.T) func() {
 		"GNOME_TERMINAL_SCREEN",
 		"GNOME_TERMINAL_SERVICE",
 		"TERMINATOR_UUID",
+		"KONSOLE_VERSION",
+		"KONSOLE_DBUS_SESSION",
 		"WINDOWID",
 		"XDG_SESSION_TYPE",
 		"XDG_CURRENT_DESKTOP",
@@ -594,6 +596,44 @@ func TestGetTerminalName_TermProgramOverridesTerminatorUUID(t *testing.T) {
 	result := GetTerminalName()
 	if result != "alacritty" {
 		t.Errorf("GetTerminalName() with TERM_PROGRAM+TERMINATOR_UUID = %q, want %q", result, "alacritty")
+	}
+}
+
+func TestGetTerminalName_KonsoleVersion(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	os.Setenv("KONSOLE_VERSION", "230804")
+
+	result := GetTerminalName()
+	if result != "konsole" {
+		t.Errorf("GetTerminalName() with KONSOLE_VERSION = %q, want %q", result, "konsole")
+	}
+}
+
+func TestGetTerminalName_KonsoleDBusSession(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	os.Setenv("KONSOLE_DBUS_SESSION", "/Sessions/1")
+
+	result := GetTerminalName()
+	if result != "konsole" {
+		t.Errorf("GetTerminalName() with KONSOLE_DBUS_SESSION = %q, want %q", result, "konsole")
+	}
+}
+
+func TestGetTerminalName_TermProgramOverridesKonsole(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	// TERM_PROGRAM should take priority over KONSOLE_* vars
+	os.Setenv("TERM_PROGRAM", "ghostty")
+	os.Setenv("KONSOLE_VERSION", "230804")
+
+	result := GetTerminalName()
+	if result != "ghostty" {
+		t.Errorf("GetTerminalName() with TERM_PROGRAM+KONSOLE_VERSION = %q, want %q", result, "ghostty")
 	}
 }
 
