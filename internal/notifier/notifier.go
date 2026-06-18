@@ -90,15 +90,21 @@ func (n *Notifier) SendDesktop(status analyzer.Status, message, sessionID, cwd, 
 		return fmt.Errorf("unknown status: %s", status)
 	}
 
-	// Extract session name, git branch and folder name from message
+	// Extract git branch and folder name from message
 	// Format: "[session-name|branch folder] actual message" or "[session-name folder] actual message"
-	sessionName, gitBranch, cleanMessage := extractSessionInfo(message)
+	_, gitBranch, cleanMessage := extractSessionInfo(message)
 
-	// Build clean title (status only + session name)
-	// Format: "✅ Completed [peak]" or "✅ Completed"
+	// Build clean title: project folder name + status.
+	// Format: "myproject · ✅ Completed"
+	// Prefer initialCWD (the session's starting folder) so the title stays
+	// stable even after a Bash `cd`; fall back to the current cwd.
 	title := statusInfo.Title
-	if sessionName != "" {
-		title = fmt.Sprintf("%s [%s]", title, sessionName)
+	folderSource := initialCWD
+	if folderSource == "" {
+		folderSource = cwd
+	}
+	if folderName := filepath.Base(folderSource); folderName != "" && folderName != "." && folderName != string(filepath.Separator) {
+		title = fmt.Sprintf("%s · %s", folderName, title)
 	}
 
 	// Build subtitle from branch and folder name
