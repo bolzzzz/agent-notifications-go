@@ -77,6 +77,24 @@ func AnalyzeTranscriptWithMessages(transcriptPath string, cfg *config.Config) (S
 	filteredMessages := jsonl.FilterMessagesAfterTimestamp(messages, userTS)
 
 	if len(filteredMessages) == 0 {
+		// Race condition: Stop hook can fire before the assistant response is
+		// written to the transcript (observed gap up to ~300ms during the
+		// thinking → text streaming transition). If we know an assistant has
+		// previously responded in this session and notifyOnTextResponse is
+		// enabled (default), treat this as a text-only completion so the user
+		// still gets a notification instead of a silent unknown. Empty or
+		// user-only transcripts stay unknown — there's no assistant turn to
+		// race against.
+		hasAnyAssistant := false
+		for _, m := range messages {
+			if m.Type == "assistant" {
+				hasAnyAssistant = true
+				break
+			}
+		}
+		if hasAnyAssistant && cfg.ShouldNotifyOnTextResponse() {
+			return StatusTaskComplete, messages, nil
+		}
 		return StatusUnknown, messages, nil
 	}
 

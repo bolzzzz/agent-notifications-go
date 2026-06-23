@@ -594,6 +594,68 @@ func TestAnalyzeTranscript_EdgeCases(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("user_msg_no_assistant_after_prior_assistant_default", func(t *testing.T) {
+		// Race condition: Stop hook fires after user message but before the
+		// assistant response is flushed to the transcript. A prior assistant
+		// message exists (earlier turn), so this isn't a user-only transcript.
+		// With notifyOnTextResponse=true (default), expect task_complete instead
+		// of a silent unknown.
+		messages := []jsonl.Message{
+			{Type: "user", Message: jsonl.MessageContent{
+				Role: "user", Content: []jsonl.Content{{Type: "text", Text: "first question"}},
+			}, Timestamp: "2025-01-01T12:00:00Z"},
+			{Type: "assistant", Message: jsonl.MessageContent{
+				Role: "assistant", Content: []jsonl.Content{{Type: "text", Text: "first answer"}},
+			}, Timestamp: "2025-01-01T12:00:05Z"},
+			{Type: "user", Message: jsonl.MessageContent{
+				Role: "user", Content: []jsonl.Content{{Type: "text", Text: "second question — no reply yet"}},
+			}, Timestamp: "2025-01-01T12:01:00Z"},
+		}
+		transcriptPath := buildTranscriptFile(t, messages)
+
+		cfg := &config.Config{} // Default: notifyOnTextResponse=true
+		status, err := AnalyzeTranscript(transcriptPath, cfg)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if status != StatusTaskComplete {
+			t.Errorf("got %v, want StatusTaskComplete for race condition (prior assistant exists, notifyOnTextResponse=true)", status)
+		}
+	})
+
+	t.Run("user_msg_no_assistant_after_prior_assistant_disabled", func(t *testing.T) {
+		// Same race condition but with notifyOnTextResponse=false: the user
+		// opted out of text-only notifications, so unknown is correct.
+		messages := []jsonl.Message{
+			{Type: "user", Message: jsonl.MessageContent{
+				Role: "user", Content: []jsonl.Content{{Type: "text", Text: "first question"}},
+			}, Timestamp: "2025-01-01T12:00:00Z"},
+			{Type: "assistant", Message: jsonl.MessageContent{
+				Role: "assistant", Content: []jsonl.Content{{Type: "text", Text: "first answer"}},
+			}, Timestamp: "2025-01-01T12:00:05Z"},
+			{Type: "user", Message: jsonl.MessageContent{
+				Role: "user", Content: []jsonl.Content{{Type: "text", Text: "second question — no reply yet"}},
+			}, Timestamp: "2025-01-01T12:01:00Z"},
+		}
+		transcriptPath := buildTranscriptFile(t, messages)
+
+		notifyOnText := false
+		cfg := &config.Config{
+			Notifications: config.NotificationsConfig{
+				NotifyOnTextResponse: &notifyOnText,
+			},
+		}
+		status, err := AnalyzeTranscript(transcriptPath, cfg)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if status != StatusUnknown {
+			t.Errorf("got %v, want StatusUnknown for race condition (notifyOnTextResponse=false)", status)
+		}
+	})
 }
 
 // === Unit Tests for Helper Functions ===
