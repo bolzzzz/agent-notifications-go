@@ -16,9 +16,10 @@ import (
 	"github.com/777genius/claude-notifications/internal/hooks"
 	"github.com/777genius/claude-notifications/internal/logging"
 	"github.com/777genius/claude-notifications/internal/notifier"
+	"github.com/777genius/claude-notifications/internal/winfocus"
 )
 
-const versionBase = "1.39.4-bo"
+const versionBase = "1.40.0-bo"
 
 var gitHash string // injected via -ldflags "-X main.gitHash=..."
 
@@ -30,6 +31,7 @@ func buildVersion() string {
 }
 
 var version = buildVersion()
+
 const windowsLazyUpdateRetryAfter = time.Hour
 
 var (
@@ -76,6 +78,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "focus-window: %v\n", err)
 			os.Exit(1)
 		}
+	case "focus-windows":
+		runFocusWindows(os.Args[2:])
 	case "play-sound":
 		runPlaySound(os.Args[2:])
 	case "daemon", "--daemon":
@@ -487,6 +491,41 @@ func runPlaySound(args []string) {
 	}
 }
 
+// runFocusWindows handles a click on a Windows toast notification. Windows
+// launches the registered claude-notify-focus: protocol with the encoded focus
+// context as the single argument; we decode it and raise the terminal window.
+func runFocusWindows(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Error: focus-windows requires a focus URI argument")
+		os.Exit(1)
+	}
+
+	// Best-effort logging to notification-debug.log to aid click diagnostics.
+	if _, err := logging.InitLogger(getPluginRoot()); err == nil {
+		defer logging.Close()
+	}
+	logging.Debug("focus-windows invoked: %s", args[0])
+
+	ctx, err := winfocus.DecodeURI(args[0])
+	if err != nil {
+		logging.Warn("focus-windows: failed to decode URI: %v", err)
+		fmt.Fprintf(os.Stderr, "focus-windows: %v\n", err)
+		os.Exit(1)
+	}
+	if !ctx.HasTarget() {
+		err := fmt.Errorf("focus-windows: empty focus context")
+		logging.Warn("%v", err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+	if err := winfocus.Focus(ctx); err != nil {
+		logging.Warn("focus-windows: %v", err)
+		fmt.Fprintf(os.Stderr, "focus-windows: %v\n", err)
+		os.Exit(1)
+	}
+	logging.Debug("focus-windows: raised window for %+v", ctx)
+}
+
 func parseFocusWindowOptions(args []string) (notifier.FocusWindowOptions, error) {
 	var opts notifier.FocusWindowOptions
 
@@ -525,6 +564,8 @@ func printUsage() {
 	fmt.Println("                          For click-to-focus support on desktop notifications")
 	fmt.Println("  focus-window <bundleID> <cwd> [--ghostty-terminal-id <id>]")
 	fmt.Println("                          Focus specific app window (internal, used by click-to-focus)")
+	fmt.Println("  focus-windows <uri>     Raise the terminal window encoded in a click-to-focus URI")
+	fmt.Println("                          (internal, Windows; invoked by the toast protocol handler)")
 	fmt.Println("  windows-hooks           Print exec-form hook JSON for Windows settings")
 	fmt.Println("                          Does not modify ~/.claude/settings.json")
 	fmt.Println("  version                 Show version information")

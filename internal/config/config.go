@@ -28,12 +28,14 @@ type NotificationsConfig struct {
 	Webhook                                     WebhookConfig    `json:"webhook"`
 	SuppressQuestionAfterTaskCompleteSeconds    *int             `json:"suppressQuestionAfterTaskCompleteSeconds"`
 	SuppressQuestionAfterAnyNotificationSeconds *int             `json:"suppressQuestionAfterAnyNotificationSeconds"`
-	NotifyOnSubagentStop                        bool             `json:"notifyOnSubagentStop"`      // Send notifications when subagents (Task tool) complete, default: false
-	SuppressForSubagents                        *bool            `json:"suppressForSubagents"`      // Suppress notifications when transcript_path contains /subagents/, default: true
+	NotifyOnSubagentStop                        bool             `json:"notifyOnSubagentStop"`      // Send notifications when subagents (Task tool) complete, default: false. Requires suppressForSubagents=false to take effect.
+	SuppressForSubagents                        *bool            `json:"suppressForSubagents"`      // Suppress subagent (SubagentStop) notifications, and Stop notifications whose transcript_path is a subagent/teammate transcript; default: true. Overrides notifyOnSubagentStop.
 	NotifyOnTextResponse                        *bool            `json:"notifyOnTextResponse"`      // Send notifications for text-only responses (no tools), default: true
 	RespectJudgeMode                            *bool            `json:"respectJudgeMode"`          // Honor CLAUDE_HOOK_JUDGE_MODE=true env var to suppress notifications, default: true
 	SuppressFilters                             []SuppressFilter `json:"suppressFilters,omitempty"` // Rules for suppressing notifications by status/branch/folder
 	TeamMode                                    string           `json:"teamMode,omitempty"`        // Team mode: "always" (no suppression, default), "wait-all" (suppress lead, notify when all idle), "never" (silent in team mode)
+	NotifyOnlyWhenUnfocused                     *bool            `json:"notifyOnlyWhenUnfocused"`   // Suppress desktop notifications while the terminal window running Claude Code has OS focus, default: false
+	NotifyDelaySeconds                          *int             `json:"notifyDelaySeconds"`        // Wait N seconds before delivering a desktop notification (paired with notifyOnlyWhenUnfocused, it re-checks focus after the wait), default: 0
 }
 
 // DesktopConfig represents desktop notification settings
@@ -44,7 +46,7 @@ type DesktopConfig struct {
 	Volume           float64 `json:"volume"`           // Volume level 0.0-1.0, default 1.0 (full volume)
 	AudioDevice      string  `json:"audioDevice"`      // Audio output device name (empty = system default)
 	AppIcon          string  `json:"appIcon"`          // Path to app icon
-	ClickToFocus     bool    `json:"clickToFocus"`     // macOS: activate terminal on notification click (default: true)
+	ClickToFocus     bool    `json:"clickToFocus"`     // macOS/Linux/Windows: activate the originating terminal window on notification click (default: true)
 	TerminalBundleID string  `json:"terminalBundleId"` // macOS: override auto-detected terminal bundle ID (empty = auto)
 }
 
@@ -154,7 +156,7 @@ func DefaultConfig() *Config {
 				Sound:        true,
 				Volume:       1.0, // Full volume by default
 				AppIcon:      filepath.Join(pluginRoot, "claude_icon.png"),
-				ClickToFocus: true, // macOS: activate terminal on click (default: enabled)
+				ClickToFocus: true, // macOS/Linux/Windows: activate terminal on click (default: enabled)
 				// TerminalBundleID: "" - empty means auto-detect
 			},
 			Webhook: WebhookConfig{
@@ -462,6 +464,9 @@ func (c *Config) Validate() error {
 	if c.Notifications.SuppressQuestionAfterAnyNotificationSeconds != nil && *c.Notifications.SuppressQuestionAfterAnyNotificationSeconds < 0 {
 		return fmt.Errorf("suppressQuestionAfterAnyNotificationSeconds must be >= 0")
 	}
+	if c.Notifications.NotifyDelaySeconds != nil && *c.Notifications.NotifyDelaySeconds < 0 {
+		return fmt.Errorf("notifyDelaySeconds must be >= 0")
+	}
 
 	// Validate teamMode
 	validTeamModes := map[string]bool{"": true, "wait-all": true, "always": true, "never": true}
@@ -558,6 +563,28 @@ func (c *Config) ShouldRespectJudgeMode() bool {
 		return true // Default: respect judge mode
 	}
 	return *c.Notifications.RespectJudgeMode
+}
+
+// ShouldNotifyOnlyWhenUnfocused returns true if desktop notifications should be
+// suppressed while the terminal window running Claude Code currently has OS focus
+// (default: false).
+func (c *Config) ShouldNotifyOnlyWhenUnfocused() bool {
+	if c.Notifications.NotifyOnlyWhenUnfocused == nil {
+		return false // Default: notify regardless of focus
+	}
+	return *c.Notifications.NotifyOnlyWhenUnfocused
+}
+
+// GetNotifyDelaySeconds returns how many seconds to wait before delivering a
+// desktop notification (default: 0). Negative values are treated as 0.
+func (c *Config) GetNotifyDelaySeconds() int {
+	if c.Notifications.NotifyDelaySeconds == nil {
+		return 0 // Default: no delay
+	}
+	if *c.Notifications.NotifyDelaySeconds < 0 {
+		return 0
+	}
+	return *c.Notifications.NotifyDelaySeconds
 }
 
 // GetTeamMode returns the team notification mode: "always" (default), "wait-all", or "never"

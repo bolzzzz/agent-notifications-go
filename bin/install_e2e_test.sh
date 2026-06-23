@@ -428,6 +428,36 @@ test_binary_name_format() {
     cleanup_test_dir
 }
 
+test_wsl_guard_blocks_linux_install() {
+    echo -e "\n${CYAN}▶ test_wsl_guard_blocks_linux_install${NC}"
+    setup_test_dir
+
+    local fake_path="$TEST_DIR/fakebin"
+    mkdir -p "$fake_path"
+
+    cat > "$fake_path/uname" <<'UNAME_EOF'
+#!/bin/sh
+case "$1" in
+  -s) echo "Linux" ;;
+  -m) echo "x86_64" ;;
+  *) echo "Linux" ;;
+esac
+UNAME_EOF
+    chmod +x "$fake_path/uname"
+
+    local output exit_code
+    output=$(INSTALL_TARGET_DIR="$TEST_DIR" PATH="$fake_path:$PATH" WSL_DISTRO_NAME=Ubuntu bash "$INSTALL_SCRIPT" 2>&1)
+    exit_code=$?
+
+    assert_exit_code 1 $exit_code "WSL install exits before Linux setup"
+    assert_contains "$output" "WSL environment detected" "WSL guard message shown"
+    assert_contains "$output" "Git Bash" "Windows Git Bash guidance shown"
+    assert_not_contains "$output" "Platform:" "WSL guard stops before platform output"
+    assert_dir_not_exists "$TEST_DIR/.install.lock" "WSL guard stops before acquiring install lock"
+
+    cleanup_test_dir
+}
+
 test_lock_created() {
     echo -e "\n${CYAN}▶ test_lock_created${NC}"
 
@@ -2177,6 +2207,7 @@ main() {
         echo -e "${BOLD}Category A: Offline Tests${NC}"
         test_platform_detection
         test_binary_name_format
+        test_wsl_guard_blocks_linux_install
         test_lock_created
         test_lock_prevents_parallel
         test_lock_stale_removal

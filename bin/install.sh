@@ -61,6 +61,40 @@ for arg in "$@"; do
   esac
 done
 
+is_wsl_environment() {
+    case "${CLAUDE_NOTIFICATIONS_ALLOW_WSL:-}" in
+        1|true|TRUE|yes|YES) return 1 ;;
+    esac
+
+    local os
+    os="$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)"
+    [ "$os" = "linux" ] || return 1
+
+    [ -n "${WSL_DISTRO_NAME:-}" ] && return 0
+    [ -n "${WSL_INTEROP:-}" ] && return 0
+
+    if [ -r /proc/version ] && grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+abort_if_wsl_environment() {
+    is_wsl_environment || return 0
+
+    echo -e "${RED}✗ WSL environment detected${NC}" >&2
+    echo "" >&2
+    echo -e "${YELLOW}This installer is running inside WSL, so it would install Linux binaries under /home instead of Windows binaries.${NC}" >&2
+    echo -e "${YELLOW}For Windows Claude Code, open Git Bash and run:${NC}" >&2
+    echo -e "  curl -fsSL https://raw.githubusercontent.com/${REPO}/main/bin/bootstrap.sh | bash" >&2
+    echo "" >&2
+    echo -e "${YELLOW}If you intentionally use Claude Code inside WSL, rerun with:${NC}" >&2
+    echo -e "  curl -fsSL https://raw.githubusercontent.com/${REPO}/main/bin/bootstrap.sh | env CLAUDE_NOTIFICATIONS_ALLOW_WSL=1 bash" >&2
+    echo "" >&2
+    exit 1
+}
+
 # Detect platform and architecture
 detect_platform() {
     local os="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -1564,6 +1598,8 @@ main() {
     echo -e "${BOLD} Claude Notifications - Binary Setup${NC}"
     echo -e "${BOLD}========================================${NC}"
     echo ""
+
+    abort_if_wsl_environment
 
     # Pre-flight checks
     if ! check_required_tools; then

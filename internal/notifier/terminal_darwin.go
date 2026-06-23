@@ -248,6 +248,12 @@ func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd 
 	return fmt.Errorf("Linux notifications not available on macOS")
 }
 
+// sendWindowsNotification is a stub on macOS (the real implementation lives in
+// terminal_windows.go).
+func sendWindowsNotification(title, body, appIcon string, cfg *config.Config, cwd string) error {
+	return fmt.Errorf("windows notifications are only available on windows")
+}
+
 // IsDaemonAvailable returns false on macOS (Linux daemon is not applicable).
 func IsDaemonAvailable() bool {
 	return false

@@ -1,4 +1,4 @@
-//go:build !darwin && !linux
+//go:build !darwin && !linux && !windows
 
 package notifier
 
@@ -35,6 +35,12 @@ func EnsureClaudeNotificationsApp() error {
 // On Windows, this falls back to beeep directly.
 func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd string) error {
 	return beeep.Notify(title, body, appIcon)
+}
+
+// sendWindowsNotification is a stub on non-Windows platforms (the real
+// implementation lives in terminal_windows.go).
+func sendWindowsNotification(title, body, appIcon string, cfg *config.Config, cwd string) error {
+	return fmt.Errorf("windows notifications are only available on windows")
 }
 
 // IsDaemonAvailable returns false on non-Linux platforms.

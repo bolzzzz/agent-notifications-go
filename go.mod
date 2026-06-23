@@ -3,6 +3,7 @@ module github.com/777genius/claude-notifications
 go 1.21.5
 
 require (
+	git.sr.ht/~jackmordaunt/go-toast v1.1.2
 	github.com/creack/pty v1.1.24
 	github.com/esiqveland/notify v0.13.3
 	github.com/gen2brain/beeep v0.11.1
@@ -17,7 +18,6 @@ require (
 )
 
 require (
-	git.sr.ht/~jackmordaunt/go-toast v1.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect

@@ -75,7 +75,8 @@ func isTimeSensitiveStatus(status analyzer.Status) bool {
 // On Linux with clickToFocus enabled, it uses the background daemon.
 // cwd is the working directory of the project; used for window-specific focus. May be empty.
 func (n *Notifier) SendDesktop(status analyzer.Status, message, sessionID, cwd, initialCWD string) error {
-	// Send terminal bell for terminal tab indicators (e.g. Ghostty, tmux)
+	// Send terminal bell for terminal tab indicators (e.g. Ghostty, tmux,
+	// Windows Terminal). Platform-specific; see bell_other.go / bell_windows.go.
 	if n.cfg.IsTerminalBellEnabled() {
 		sendTerminalBell()
 	}
@@ -166,6 +167,18 @@ func (n *Notifier) SendDesktop(status analyzer.Status, message, sessionID, cwd, 
 			// Fall through to beeep
 		} else {
 			logging.Debug("Desktop notification sent via Linux daemon: title=%s", title)
+			n.playSoundDetached(statusInfo.Sound)
+			return nil
+		}
+	}
+
+	// Windows: use go-toast with protocol activation for click-to-focus support
+	if platform.IsWindows() && n.cfg.Notifications.Desktop.ClickToFocus {
+		if err := sendWindowsNotification(title, cleanMessage, appIcon, n.cfg, cwd); err != nil {
+			logging.Warn("Windows click-to-focus notification failed, falling back to beeep: %v", err)
+			// Fall through to beeep
+		} else {
+			logging.Debug("Desktop notification sent via Windows click-to-focus: title=%s", title)
 			n.playSoundDetached(statusInfo.Sound)
 			return nil
 		}
@@ -689,56 +702,6 @@ func (n *Notifier) Close() error {
 	n.mu.Unlock()
 
 	return nil
-}
-
-// sendTerminalBell writes a BEL character to /dev/tty to trigger terminal
-// tab indicators (e.g. Ghostty tab highlight, tmux window bell flag).
-//
-// When the hook subprocess has no controlling tty (notably Claude Code hooks,
-// which detach from the parent terminal), /dev/tty open fails with ENXIO.
-// In that case we fall back to writing BEL into the tmux pane's tty directly,
-// using $TMUX_PANE to locate the pane and `tmux display-message` to resolve
-// its tty path. Tmux reads the BEL from the pty and sets the window's bell
-// flag, so tab indicators (window-status-bell-style) still light up.
-func sendTerminalBell() {
-	f, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0)
-	if err == nil {
-		defer f.Close()
-		_, _ = f.Write([]byte("\a"))
-		return
-	}
-	logging.Debug("Could not open /dev/tty for bell: %v", err)
-
-	sendTmuxPaneBell()
-}
-
-// sendTmuxPaneBell writes a BEL byte to the current tmux pane's tty as a
-// fallback path for environments without a controlling tty (e.g. Claude Code
-// hook subprocesses). No-op when not running under tmux.
-func sendTmuxPaneBell() {
-	paneID := os.Getenv("TMUX_PANE")
-	if os.Getenv("TMUX") == "" || paneID == "" {
-		return
-	}
-
-	out, err := execCommand("tmux", "display-message", "-p", "-t", paneID, "#{pane_tty}").Output()
-	if err != nil {
-		logging.Debug("tmux display-message failed for bell fallback: %v", err)
-		return
-	}
-
-	paneTTY := strings.TrimSpace(string(out))
-	if paneTTY == "" {
-		return
-	}
-
-	f, err := os.OpenFile(paneTTY, os.O_WRONLY, 0)
-	if err != nil {
-		logging.Debug("Could not open tmux pane tty %s for bell: %v", paneTTY, err)
-		return
-	}
-	defer f.Close()
-	_, _ = f.Write([]byte("\a"))
 }
 
 // extractSessionInfo extracts session name and git branch from message

@@ -40,6 +40,12 @@ func EnsureClaudeNotificationsApp() error {
 	return nil
 }
 
+// sendWindowsNotification is a stub on Linux (the real implementation lives in
+// terminal_windows.go).
+func sendWindowsNotification(title, body, appIcon string, cfg *config.Config, cwd string) error {
+	return fmt.Errorf("windows notifications are only available on windows")
+}
+
 // sendLinuxNotification sends a notification on Linux.
 // When clickToFocus is enabled, uses the daemon for click-to-focus support.
 // Falls back to beeep when daemon is unavailable.

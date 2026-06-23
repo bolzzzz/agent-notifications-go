@@ -88,6 +88,30 @@ Review the file before posting it publicly, because it may include local file pa
 
 Linux click-to-focus behavior depends on the session type, terminal, window manager, and available focus tools. The diagnostic script captures the exact environment needed to explain why the plugin focused the wrong window or could not focus anything at all.
 
+## Windows: installer says Linux or installs `linux-amd64`
+
+### Symptom
+
+You run the bootstrap command from Windows Terminal or PowerShell, but the output says `Platform: Linux`, uses paths under `/home/...`, or mentions `claude-notifications-linux-amd64`.
+
+### Why it happens
+
+PowerShell can resolve `bash` to WSL. In that case the installer is running inside Linux, not Git Bash, so Linux platform detection is technically correct but not useful for Windows Claude Code.
+
+### Fix
+
+Open Git Bash and run the bootstrap command there:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | bash
+```
+
+If you intentionally use Claude Code inside WSL, opt in explicitly:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | env CLAUDE_NOTIFICATIONS_ALLOW_WSL=1 bash
+```
+
 ## Windows: install issues related to `%TEMP%` / `%TMP%` location
 
 If your temp directory is on a different drive than your user profile (or where Claude stores plugin cache), you may see similar cross-device move issues.

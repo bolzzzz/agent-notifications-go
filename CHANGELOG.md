@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.40.0] - 2026-06-22
+
+### Added
+- **Windows: notification click-to-focus and terminal bell support** - Windows notifications can now bring the originating terminal session back into focus, and terminal bell delivery can ring the originating Windows Terminal tab when supported ([#36](https://github.com/777genius/claude-notifications-go/issues/36), [#94](https://github.com/777genius/claude-notifications-go/pull/94))
+- **Focus-aware and delayed desktop notifications** - two independent, composable options let notifications model where your attention is. `notifyOnlyWhenUnfocused` (default `false`) skips the desktop notification only when the focused terminal window can be matched to the current Claude Code session; `notifyDelaySeconds` (default `0`, capped at 25s by the hook timeout) waits before delivering and, when paired with `notifyOnlyWhenUnfocused`, re-checks focus after the wait. Focus detection is best-effort per platform (Ghostty/session or title-matched macOS windows, exact X11 window IDs, Windows foreground ancestry plus project-title match) and degrades safely to delivering the notification when focus can't be determined. Both apply to desktop notifications only; webhook delivery is unaffected ([#93](https://github.com/777genius/claude-notifications-go/issues/93))
+
+### Fixed
+- **Windows: bootstrap no longer silently installs Linux binaries from WSL** - the bootstrap and binary installer now detect WSL, stop before touching plugin/download state, and tell Windows users to rerun from Git Bash; intentional WSL installs can opt in with `CLAUDE_NOTIFICATIONS_ALLOW_WSL=1` ([#98](https://github.com/777genius/claude-notifications-go/issues/98))
+- **Hooks: subagent stops are detected from the hook event** - focus-aware notification handling now uses the Claude hook event type instead of inferring subagent stops from `transcript_path`, avoiding unsafe misclassification in edge cases ([#97](https://github.com/777genius/claude-notifications-go/issues/97))
+
 ## [1.39.4] - 2026-06-13
 
 ### Fixed
