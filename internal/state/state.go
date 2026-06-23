@@ -93,6 +93,22 @@ func (m *Manager) Delete(sessionID string) error {
 	return nil
 }
 
+// resolveInitialCWD picks the best directory to record as the session's
+// "initial" cwd. Preference order:
+//  1. The git toplevel containing cwd (handles the common case where Claude
+//     is started from a subdirectory of a worktree; the toplevel is what an
+//     IDE typically opens, so its basename matches the IDE window title).
+//  2. cwd itself, when not inside a git repo or git is unavailable.
+//
+// cwd is assumed non-empty (caller checks). Returns cwd unchanged on any
+// git lookup failure, so this is always safe.
+func resolveInitialCWD(cwd string) string {
+	if top := platform.GetGitToplevel(cwd); top != "" {
+		return top
+	}
+	return cwd
+}
+
 // RecordInitialCWD stores the first cwd seen for a Claude session.
 func (m *Manager) RecordInitialCWD(sessionID, cwd string) error {
 	if strings.TrimSpace(cwd) == "" {
@@ -111,7 +127,7 @@ func (m *Manager) RecordInitialCWD(sessionID, cwd string) error {
 	}
 
 	if strings.TrimSpace(state.InitialCWD) == "" {
-		state.InitialCWD = cwd
+		state.InitialCWD = resolveInitialCWD(cwd)
 	}
 	state.CWD = cwd
 
@@ -132,7 +148,7 @@ func (m *Manager) UpdateInteractiveTool(sessionID, toolName, cwd string) error {
 	}
 
 	if strings.TrimSpace(state.InitialCWD) == "" && strings.TrimSpace(cwd) != "" {
-		state.InitialCWD = cwd
+		state.InitialCWD = resolveInitialCWD(cwd)
 	}
 	state.LastInteractiveTool = toolName
 	state.LastTimestamp = platform.CurrentTimestamp()

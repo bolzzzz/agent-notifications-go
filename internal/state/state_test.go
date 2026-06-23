@@ -2,6 +2,7 @@ package state
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -154,6 +155,69 @@ func TestManager_RecordInitialCWD_PreservesFirstValue(t *testing.T) {
 
 	assert.Equal(t, "/folderA", state.InitialCWD)
 	assert.Equal(t, "/folderA/subFolderB", state.CWD)
+}
+
+// TestManager_RecordInitialCWD_PrefersGitToplevel verifies that when Claude
+// is started from a subdirectory of a git working tree, the recorded initial
+// cwd is the toplevel (so the basename matches the IDE/window title) rather
+// than the deeper cwd the hook happened to observe first.
+func TestManager_RecordInitialCWD_PrefersGitToplevel(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+
+	repoRoot := t.TempDir()
+	// macOS /tmp resolves through a /private symlink; canonicalize so
+	// equality against `git rev-parse --show-toplevel` is reliable.
+	if resolved, err := filepath.EvalSymlinks(repoRoot); err == nil {
+		repoRoot = resolved
+	}
+
+	cmd := exec.Command("git", "-C", repoRoot, "init", "--quiet")
+	require.NoError(t, cmd.Run(), "git init failed")
+
+	subdir := filepath.Join(repoRoot, "a", "b", "c")
+	require.NoError(t, os.MkdirAll(subdir, 0755))
+
+	mgr := NewManager()
+	sessionID := "test-record-initial-cwd-git"
+	defer func() { _ = mgr.Delete(sessionID) }()
+
+	err := mgr.RecordInitialCWD(sessionID, subdir)
+	require.NoError(t, err)
+
+	state, err := mgr.Load(sessionID)
+	require.NoError(t, err)
+	require.NotNil(t, state)
+
+	// InitialCWD should be the worktree root, not the subdirectory.
+	assert.Equal(t, repoRoot, state.InitialCWD,
+		"InitialCWD should be the git toplevel, not the deeper subdir")
+	// CWD should still reflect the actual cwd the hook reported.
+	assert.Equal(t, subdir, state.CWD)
+}
+
+// TestManager_RecordInitialCWD_FallsBackOutsideGit verifies that when cwd
+// is not inside a git repo, we fall back to recording cwd verbatim.
+func TestManager_RecordInitialCWD_FallsBackOutsideGit(t *testing.T) {
+	nonRepo := t.TempDir()
+	if resolved, err := filepath.EvalSymlinks(nonRepo); err == nil {
+		nonRepo = resolved
+	}
+
+	mgr := NewManager()
+	sessionID := "test-record-initial-cwd-nongit"
+	defer func() { _ = mgr.Delete(sessionID) }()
+
+	err := mgr.RecordInitialCWD(sessionID, nonRepo)
+	require.NoError(t, err)
+
+	state, err := mgr.Load(sessionID)
+	require.NoError(t, err)
+	require.NotNil(t, state)
+
+	assert.Equal(t, nonRepo, state.InitialCWD)
+	assert.Equal(t, nonRepo, state.CWD)
 }
 
 func TestManager_UpdateGhosttyTerminalID_PreservesExistingFields(t *testing.T) {
