@@ -16,6 +16,7 @@ import (
 	"github.com/777genius/claude-notifications/internal/hooks"
 	"github.com/777genius/claude-notifications/internal/logging"
 	"github.com/777genius/claude-notifications/internal/notifier"
+	"github.com/777genius/claude-notifications/internal/product"
 	"github.com/777genius/claude-notifications/internal/winfocus"
 )
 
@@ -422,8 +423,9 @@ func powershellSingleQuoted(value string) string {
 }
 
 func getPluginRoot() string {
-	// Try CLAUDE_PLUGIN_ROOT environment variable first
-	if root := os.Getenv("CLAUDE_PLUGIN_ROOT"); root != "" {
+	// Try the plugin-root env var for the invoking product first
+	// (CLAUDE_PLUGIN_ROOT for Claude Code, CODEBUDDY_PLUGIN_ROOT for CodeBuddy).
+	if root := product.PluginRoot(); root != "" {
 		return root
 	}
 

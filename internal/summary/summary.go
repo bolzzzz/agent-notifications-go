@@ -8,6 +8,7 @@ import (
 
 	"github.com/777genius/claude-notifications/internal/analyzer"
 	"github.com/777genius/claude-notifications/internal/config"
+	"github.com/777genius/claude-notifications/internal/product"
 	"github.com/777genius/claude-notifications/pkg/jsonl"
 )
 
@@ -658,7 +659,7 @@ func CleanMarkdown(text string) string {
 func GetDefaultMessage(status analyzer.Status, cfg *config.Config) string {
 	statusInfo, exists := cfg.GetStatusInfo(string(status))
 	if !exists {
-		return "Claude Code notification"
+		return product.Name() + " notification"
 	}
 
 	// Remove emoji from title for message

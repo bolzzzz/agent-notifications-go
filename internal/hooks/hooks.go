@@ -20,6 +20,7 @@ import (
 	"github.com/777genius/claude-notifications/internal/logging"
 	"github.com/777genius/claude-notifications/internal/notifier"
 	"github.com/777genius/claude-notifications/internal/platform"
+	"github.com/777genius/claude-notifications/internal/product"
 	"github.com/777genius/claude-notifications/internal/sessionname"
 	"github.com/777genius/claude-notifications/internal/state"
 	"github.com/777genius/claude-notifications/internal/summary"
@@ -54,6 +55,10 @@ type HookData struct {
 	CWD            string `json:"cwd"`
 	ToolName       string `json:"tool_name,omitempty"`
 	HookEventName  string `json:"hook_event_name,omitempty"`
+	// Notification-specific fields (CodeBuddy uses notification_type + message;
+	// Claude Code uses title + message). Neither is required by the dispatch logic.
+	Message          string `json:"message,omitempty"`
+	NotificationType string `json:"notification_type,omitempty"`
 	// Team-related fields (present in TeammateIdle, TaskCreated, TaskCompleted hooks)
 	TeamName     string `json:"team_name,omitempty"`
 	TeammateName string `json:"teammate_name,omitempty"`
@@ -120,10 +125,10 @@ func (h *Handler) HandleHook(hookEvent string, input io.Reader) error {
 	defer errorhandler.HandlePanic()
 
 	// Skip notifications when running in background judge mode (e.g., double-shot-latte plugin)
-	// The CLAUDE_HOOK_JUDGE_MODE env var is set by plugins that spawn background Claude instances
-	// to evaluate context/decide on continuation - we don't want notifications from these
-	// Can be disabled via config: "respectJudgeMode": false
-	if h.cfg.ShouldRespectJudgeMode() && os.Getenv("CLAUDE_HOOK_JUDGE_MODE") == "true" {
+	// The CLAUDE_HOOK_JUDGE_MODE / CODEBUDDY_HOOK_JUDGE_MODE env var is set by plugins that
+	// spawn background instances to evaluate context/decide on continuation - we don't want
+	// notifications from these. Can be disabled via config: "respectJudgeMode": false
+	if h.cfg.ShouldRespectJudgeMode() && product.ShouldRespectJudgeMode() {
 		return nil
 	}
 
