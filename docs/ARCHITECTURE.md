@@ -175,10 +175,8 @@ ELSE:
 **Implementation**:
 - Uses `github.com/gen2brain/beeep` for notifications
 - Supports macOS, Linux, Windows
-- Custom sound playback (platform-specific)
-  - macOS: `afplay`
-  - Linux: `paplay` or `aplay`
-  - Windows: PowerShell `Media.SoundPlayer`
+- Custom sound playback uses `malgo` (miniaudio) cross-platform
+- Audio formats are decoded in-process via `gopxl/beep` (MP3, WAV, FLAC, OGG/Vorbis) and `go-audio/aiff` (AIFF)
 
 ### 8. Webhook Sender (`internal/webhook`)
 

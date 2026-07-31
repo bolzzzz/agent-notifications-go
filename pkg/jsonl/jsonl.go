@@ -97,7 +97,7 @@ func ParseFile(path string) ([]Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	return Parse(f)
 }

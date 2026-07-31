@@ -1,0 +1,26 @@
+version: "2"
+
+linters:
+  exclusions:
+    rules:
+      # Cleanup and environment restoration in these legacy tests are
+      # intentionally best-effort. Keep this list explicit so new test files
+      # receive full errcheck coverage.
+      - path: ^internal/(analyzer/analyzer|audio/audio|daemon/mappings|dedup/dedup|errorhandler/example|hooks/(hooks|permission_guidance)|logging/logging|platform/(git|platform)|state/state|summary/summary|teamstate/teamstate)_test\.go$
+        text: 'Error return value of `(?:[^`]*Close|os\.(?:Remove|RemoveAll|Setenv|Unsetenv))` is not checked'
+        linters:
+          - errcheck
+      - path: ^internal/notifier/(kitty|multiplexer|notifier|sound|terminal_darwin|test_helpers_darwin|tmux_e2e|tmux_iterm2|tmux|wezterm|zellij_e2e|zellij)_test\.go$
+        text: 'Error return value of `(?:[^`]*Close|os\.(?:Remove|RemoveAll|Setenv|Unsetenv))` is not checked'
+        linters:
+          - errcheck
+      - path: ^pkg/jsonl/jsonl_test\.go$
+        text: 'Error return value of `(?:[^`]*Close|os\.(?:Remove|RemoveAll|Setenv|Unsetenv))` is not checked'
+        linters:
+          - errcheck
+      # Several errors are shown directly to users and intentionally start with
+      # product or OS feature names such as Ghostty and Screen Recording.
+      - path: internal/notifier/(ax_focus_darwin|ghostty_session_darwin|terminal_darwin)\.go
+        text: "ST1005:"
+        linters:
+          - staticcheck

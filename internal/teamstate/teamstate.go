@@ -199,7 +199,7 @@ func saveStateUnlocked(s *State) error {
 		return fmt.Errorf("write team state tmp: %w", err)
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("rename team state: %w", err)
 	}
 
@@ -319,7 +319,7 @@ func (m *Manager) Cleanup(maxAgeSec int64) {
 		for _, path := range matches {
 			info, err := os.Stat(path)
 			if err == nil && info.ModTime().Before(cutoff) {
-				os.Remove(path)
+				_ = os.Remove(path)
 			}
 		}
 	}

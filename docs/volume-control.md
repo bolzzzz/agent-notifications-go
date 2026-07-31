@@ -52,40 +52,37 @@ Edit `~/.claude/claude-notifications-go/config.json` and set the `volume` field:
 
 ## How It Works
 
-### Logarithmic Volume Scaling
+### Linear Sample Scaling
 
-The plugin uses **logarithmic volume scaling** to match human hearing perception:
+The plugin scales decoded PCM samples by the configured volume before playback:
 
 ```
-Linear Volume → Logarithmic Units (log₂)
-1.0 (100%)    → 0.0   (full volume, no change)
-0.7 (70%)     → -0.5  (~-3dB)
-0.5 (50%)     → -1.0  (~-6dB, half perceived volume)
-0.3 (30%)     → -1.7  (~-10dB)
-0.1 (10%)     → -3.3  (~-20dB)
+Configured Volume → PCM multiplier
+1.0 (100%)       → 1.0 (full volume, no change)
+0.7 (70%)        → 0.7
+0.5 (50%)        → 0.5
+0.3 (30%)        → 0.3
+0.1 (10%)        → 0.1
 ```
 
 This means:
-- `0.5` sounds like "half as loud" to human ears
+- `0.5` halves the sample amplitude
 - `0.3` is noticeably quieter but still audible
 - `0.1` is very quiet, suitable for very quiet environments
 
 ### Technical Implementation
 
-Volume control is implemented using `gopxl/beep/effects.Volume`:
+Volume control is applied in `internal/audio` after decoding and before handing PCM samples to `malgo`:
 
 ```go
-volumeStreamer := &effects.Volume{
-    Streamer: audioStream,
-    Base:     2,           // Exponential base
-    Volume:   log₂(volume), // Logarithmic conversion
-    Silent:   false,
+if p.volume < 1.0 {
+    for i := range samples {
+        samples[i] = int16(float64(samples[i]) * p.volume)
+    }
 }
 ```
 
-The same algorithm is used in:
-- `internal/notifier/notifier.go` - For actual notifications
-- `cmd/sound-preview/main.go` - For sound preview utility
+The same audio path is used by notifications and `cmd/sound-preview`.
 
 ## Usage Examples
 

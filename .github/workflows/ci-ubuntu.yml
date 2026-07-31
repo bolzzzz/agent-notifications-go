@@ -10,18 +10,19 @@ jobs:
   test:
     name: Test on Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.21', '1.22']
+        go: ['1.21', '1.26']
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
 
@@ -30,9 +31,6 @@ jobs:
 
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-
-      - name: Clear Go cache
-        run: go clean -modcache
 
       - name: Download dependencies
         run: go mod download
@@ -56,10 +54,10 @@ jobs:
         run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
-        if: matrix.go == '1.21'
-        uses: codecov/codecov-action@v3
+        if: matrix.go == '1.26'
+        uses: codecov/codecov-action@v7
         with:
-          file: ./coverage.txt
+          files: ./coverage.txt
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
@@ -75,7 +73,8 @@ jobs:
       - name: Run install.sh E2E tests (offline + mock)
         run: bash bin/install_e2e_test.sh
 
-      - name: Run install.sh E2E tests (real network)
+      - name: Run install.sh E2E diagnostics (real network)
+        if: matrix.go == '1.26'
         run: bash bin/install_e2e_test.sh --real-network
         timeout-minutes: 5
         continue-on-error: true
@@ -83,27 +82,25 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v7
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-
-      - name: Clear Go cache
-        run: go clean -modcache
 
       - name: Download dependencies
         run: go mod download
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.12.2
           args: --timeout=5m

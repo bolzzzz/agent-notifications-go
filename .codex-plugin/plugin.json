@@ -1,0 +1,26 @@
+{
+  "name": "claude-notifications-go",
+  "version": "1.40.1",
+  "description": "Smart desktop notifications for Codex task statuses (Go implementation)",
+  "author": {
+    "name": "777genius",
+    "email": "iliyazelenkog@gmail.com",
+    "url": "https://github.com/777genius"
+  },
+  "homepage": "https://github.com/777genius/claude-notifications-go",
+  "repository": "https://github.com/777genius/claude-notifications-go",
+  "license": "GPL-3.0",
+  "keywords": ["notifications", "alerts", "productivity", "go", "hooks", "codex"],
+  "hooks": "./hooks/hooks-codex.json",
+  "interface": {
+    "displayName": "Smart Notifications",
+    "shortDescription": "Desktop notifications when Codex finishes or needs input",
+    "longDescription": "Sends desktop notifications (and optional webhooks) when a Codex turn completes, when Codex asks a question, and when a permission request is waiting. Supports click-to-focus, sounds, and per-status filters.",
+    "developerName": "777genius",
+    "category": "Productivity",
+    "capabilities": ["Interactive"],
+    "websiteURL": "https://github.com/777genius/claude-notifications-go",
+    "brandColor": "#3B82F6",
+    "logo": "./claude_icon.png"
+  }
+}

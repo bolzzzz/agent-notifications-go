@@ -64,7 +64,8 @@ Step 7: Summary & test
 The `bin/sound-preview` binary is a Go application that:
 
 - **Supports multiple formats:** MP3, WAV, FLAC, OGG/Vorbis, AIFF
-- **Native playback:** Uses `gopxl/beep` library (no external dependencies)
+- **Native playback:** Uses `malgo` (miniaudio) for cross-platform output, with in-process format decoding
+- **No shell-out:** Does not depend on `afplay`, `paplay`, `aplay`, or PowerShell audio APIs
 - **Cross-platform:** Works on macOS, Linux, and Windows
 - **Fast:** Loads and plays sounds in <1 second
 - **Volume control:** Adjustable volume from 0.0 (silent) to 1.0 (full volume)
@@ -182,7 +183,7 @@ User: [selects Funk from options]
 | Sound preview during questions | ✅ Yes | ✅ Yes |
 | Russian commands | ✅ Yes | ✅ Yes |
 | Cross-platform | ✅ macOS/Linux/Windows | ✅ macOS/Linux/Windows |
-| Sound playback | `afplay` (macOS only) | Native Go (all platforms) |
+| Sound playback | `afplay` (macOS only) | `malgo`/miniaudio (all platforms) |
 | Supported formats | MP3, AIFF, OGG | MP3, WAV, FLAC, OGG, AIFF |
 
 ## Testing

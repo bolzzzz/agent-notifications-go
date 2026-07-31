@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Codex CLI support** - the plugin now doubles as a Codex plugin: `.codex-plugin/plugin.json` and `hooks/hooks-codex.json` wire Codex `Stop`, `SubagentStop`, `PermissionRequest`, and `request_user_input` PreToolUse events into the same notification pipeline (`.agents/plugins/marketplace.json` allows `codex plugin marketplace add`). Codex events are detected via the payload's `turn_id`/`model` extension fields and classified from `last_assistant_message` instead of parsing the rollout transcript; a trailing `?` is treated as a question. Configuration is additionally read from `~/.codex/claude-notifications-go/config.json`, and the plugin root falls back to Codex's `PLUGIN_ROOT` environment variable.
+
+## [1.40.1] - 2026-07-17
+
+### Changed
+- **CI/CD now tests the supported Go range and release artifacts before publishing** - workflows use Go 1.21 and 1.26, run Swift notifier tests, pin current GitHub Actions, validate release metadata, and smoke-test every platform artifact before creating a release.
+- **Audio documentation now matches the actual playback backend** - platform and format guidance reflects the current cross-platform audio implementation.
+
+### Fixed
+- **Plugin paths resolve without an ambient `CLAUDE_PLUGIN_ROOT`** - configuration defaults use the executable-derived plugin root, preserve literal dollar signs in paths, retain omitted fields in partial status overrides, and keep explicit empty sound settings ([#107](https://github.com/777genius/claude-notifications-go/issues/107), [#109](https://github.com/777genius/claude-notifications-go/pull/109)).
+- **macOS release binaries retain compatibility with macOS 12 and later** - Darwin builds now set and verify a 12.0 deployment target instead of inheriting the runner OS version.
+- **Windows installer guidance consistently points users to Git Bash** - bootstrap and download failures no longer suggest unsupported shell paths.
+- **Windows terminal bell fallback handles cyclic process snapshots** - ancestor discovery no longer returns or retries duplicate process IDs.
+
 ## [1.40.0] - 2026-06-22
 
 ### Added

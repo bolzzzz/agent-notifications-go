@@ -65,7 +65,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error creating audio player: %v\n", err)
 		os.Exit(1)
 	}
-	defer player.Close()
+	defer func() { _ = player.Close() }()
 
 	// Play the sound
 	if err := player.Play(soundPath); err != nil {

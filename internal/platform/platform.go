@@ -86,7 +86,7 @@ func AtomicCreateFile(path string) (bool, error) {
 		}
 		return false, err
 	}
-	f.Close()
+	_ = f.Close()
 	return true, nil
 }
 

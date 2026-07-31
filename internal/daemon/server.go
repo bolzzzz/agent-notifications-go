@@ -96,7 +96,7 @@ func NewServer(cfg ServerConfig) (*Server, error) {
 		notify.WithOnClosed(s.onNotificationClosed),
 	)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to create notifier: %w", err)
 	}
 	s.notifier = notifier
@@ -109,7 +109,7 @@ func (s *Server) Run() error {
 	socketPath := GetSocketPath()
 
 	// Remove existing socket
-	os.Remove(socketPath)
+	_ = os.Remove(socketPath)
 
 	// Create listener
 	listener, err := net.Listen("unix", socketPath)
@@ -120,7 +120,7 @@ func (s *Server) Run() error {
 
 	// Set socket permissions
 	if err := os.Chmod(socketPath, 0600); err != nil {
-		listener.Close()
+		_ = listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
@@ -183,7 +183,7 @@ func (s *Server) acceptLoop() {
 // handleConnection handles a single client connection
 func (s *Server) handleConnection(conn net.Conn) {
 	defer s.wg.Done()
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	s.updateActivity()
 
@@ -288,8 +288,12 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 	s.lastNotifIDMu.Unlock()
 
 	// Create notification with click action
+	appName := req.AppName
+	if appName == "" {
+		appName = "claude-notifications"
+	}
 	n := notify.Notification{
-		AppName:       "claude-notifications",
+		AppName:       appName,
 		ReplacesID:    replacesID,
 		Summary:       req.Title,
 		Body:          req.Body,
@@ -449,7 +453,7 @@ func (s *Server) Shutdown() error {
 
 	// Close listener
 	if s.listener != nil {
-		s.listener.Close()
+		_ = s.listener.Close()
 	}
 
 	// Wait for goroutines with timeout
@@ -467,17 +471,17 @@ func (s *Server) Shutdown() error {
 
 	// Close notifier
 	if s.notifier != nil {
-		s.notifier.Close()
+		_ = s.notifier.Close()
 	}
 
 	// Close D-Bus connection
 	if s.conn != nil {
-		s.conn.Close()
+		_ = s.conn.Close()
 	}
 
 	// Clean up socket and PID files
-	os.Remove(GetSocketPath())
-	os.Remove(GetPidFilePath())
+	_ = os.Remove(GetSocketPath())
+	_ = os.Remove(GetPidFilePath())
 
 	log.Printf("[INFO] Daemon stopped")
 	return nil

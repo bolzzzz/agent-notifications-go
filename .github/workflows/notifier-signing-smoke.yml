@@ -17,12 +17,13 @@ permissions:
 
 jobs:
   smoke-notifier:
-    name: Build, Sign, Notarize ClaudeNotifier.app
-    runs-on: macos-latest
+    name: Build, Sign, Optionally Notarize ClaudeNotifier.app
+    runs-on: macos-15
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Import Apple certificate
         env:
@@ -81,7 +82,7 @@ jobs:
           ls -lh ClaudeNotifier-smoke.app.zip
 
       - name: Upload smoke artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ClaudeNotifier-smoke
           path: swift-notifier/ClaudeNotifier-smoke.app.zip

@@ -105,16 +105,19 @@ func writeBELToConsole() error {
 // a process snapshot — fallback AttachConsole targets when the immediate parent
 // has no console of its own.
 func ancestorPIDs() []uint32 {
-	parents := parentSnapshot()
+	return ancestorChain(parentSnapshot(), windows.GetCurrentProcessId())
+}
+
+func ancestorChain(parents map[uint32]uint32, pid uint32) []uint32 {
 	var chain []uint32
 	seen := map[uint32]bool{}
-	pid := windows.GetCurrentProcessId()
-	for i := 0; i < 32 && pid != 0 && !seen[pid]; i++ {
+	for i := 0; i < 32 && pid != 0; i++ {
 		seen[pid] = true
 		next := parents[pid]
-		if next != 0 {
-			chain = append(chain, next)
+		if next == 0 || seen[next] {
+			break
 		}
+		chain = append(chain, next)
 		pid = next
 	}
 	return chain

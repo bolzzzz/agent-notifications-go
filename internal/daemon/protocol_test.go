@@ -25,7 +25,9 @@ func TestGetSocketPath_WithXDGRuntimeDir(t *testing.T) {
 
 func TestGetSocketPath_WithoutXDGRuntimeDir(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "")
-	os.Unsetenv("XDG_RUNTIME_DIR")
+	if err := os.Unsetenv("XDG_RUNTIME_DIR"); err != nil {
+		t.Fatal(err)
+	}
 
 	result := GetSocketPath()
 	expected := fmt.Sprintf("/tmp/claude-notifications-%d.sock", os.Getuid())
@@ -36,7 +38,9 @@ func TestGetSocketPath_WithoutXDGRuntimeDir(t *testing.T) {
 
 func TestGetSocketPath_ContainsUID(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "")
-	os.Unsetenv("XDG_RUNTIME_DIR")
+	if err := os.Unsetenv("XDG_RUNTIME_DIR"); err != nil {
+		t.Fatal(err)
+	}
 
 	result := GetSocketPath()
 	uid := fmt.Sprintf("%d", os.Getuid())
@@ -72,7 +76,9 @@ func TestGetPidFilePath_WithXDGRuntimeDir(t *testing.T) {
 
 func TestGetPidFilePath_WithoutXDGRuntimeDir(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "")
-	os.Unsetenv("XDG_RUNTIME_DIR")
+	if err := os.Unsetenv("XDG_RUNTIME_DIR"); err != nil {
+		t.Fatal(err)
+	}
 
 	result := GetPidFilePath()
 	expected := fmt.Sprintf("/tmp/claude-notifications-%d.pid", os.Getuid())
@@ -94,7 +100,9 @@ func TestGetSocketAndPidPath_Consistency(t *testing.T) {
 
 func TestGetSocketAndPidPath_ConsistencyNoXDG(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "")
-	os.Unsetenv("XDG_RUNTIME_DIR")
+	if err := os.Unsetenv("XDG_RUNTIME_DIR"); err != nil {
+		t.Fatal(err)
+	}
 
 	socketDir := filepath.Dir(GetSocketPath())
 	pidDir := filepath.Dir(GetPidFilePath())

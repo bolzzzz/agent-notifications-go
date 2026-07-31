@@ -20,6 +20,7 @@ import (
 	"github.com/777genius/claude-notifications/internal/logging"
 	"github.com/777genius/claude-notifications/internal/notifier"
 	"github.com/777genius/claude-notifications/internal/platform"
+	"github.com/777genius/claude-notifications/internal/product"
 	"github.com/777genius/claude-notifications/internal/sessionname"
 	"github.com/777genius/claude-notifications/internal/state"
 	"github.com/777genius/claude-notifications/internal/summary"
@@ -47,13 +48,18 @@ func (d notificationDelivery) delivered() bool {
 	return d.webhookQueued || d.desktopDelivered
 }
 
-// HookData represents the data received from Claude Code hooks
+// HookData represents the data received from Claude Code / Codex hooks
 type HookData struct {
 	TranscriptPath string `json:"transcript_path"`
 	SessionID      string `json:"session_id"`
 	CWD            string `json:"cwd"`
 	ToolName       string `json:"tool_name,omitempty"`
 	HookEventName  string `json:"hook_event_name,omitempty"`
+	// Codex-specific extension fields (absent in Claude Code payloads).
+	// TurnID and Model double as product-detection signals (product.Detect).
+	TurnID               string `json:"turn_id,omitempty"`
+	Model                string `json:"model,omitempty"`
+	LastAssistantMessage string `json:"last_assistant_message,omitempty"`
 	// Team-related fields (present in TeammateIdle, TaskCreated, TaskCompleted hooks)
 	TeamName     string `json:"team_name,omitempty"`
 	TeammateName string `json:"teammate_name,omitempty"`
@@ -552,6 +558,15 @@ func skipUTF8BOM(input io.Reader) io.Reader {
 // Returns the parsed messages alongside the status so callers can reuse them
 // (e.g., for summary generation) without re-reading the transcript file.
 func (h *Handler) handleStopEvent(hookData *HookData) (analyzer.Status, []jsonl.Message, error) {
+	// Codex: the rollout transcript format is not a stable interface, and the
+	// hook payload already carries last_assistant_message, so classify directly
+	// from the payload instead of parsing the transcript.
+	if product.Detect(hookData.TurnID, hookData.Model) == product.Codex {
+		status := codexStopStatus(hookData.LastAssistantMessage)
+		logging.Debug("Analyzed status (codex): %s", status)
+		return status, nil, nil
+	}
+
 	if hookData.TranscriptPath == "" {
 		logging.Warn("Transcript path is empty, skipping notification")
 		return analyzer.StatusUnknown, nil, nil
@@ -572,9 +587,33 @@ func (h *Handler) handleStopEvent(hookData *HookData) (analyzer.Status, []jsonl.
 	return status, messages, nil
 }
 
+// codexStopStatus classifies a Codex Stop/SubagentStop event from the
+// last_assistant_message payload field. A trailing question mark indicates the
+// agent is waiting on the user; anything else means the turn completed.
+func codexStopStatus(lastAssistantMessage string) analyzer.Status {
+	msg := strings.TrimSpace(lastAssistantMessage)
+	if msg == "" {
+		return analyzer.StatusTaskComplete
+	}
+	if strings.HasSuffix(msg, "?") {
+		return analyzer.StatusQuestion
+	}
+	return analyzer.StatusTaskComplete
+}
+
 // generateMessage generates a notification body and action summary.
 // If messages are provided (from handleStopEvent), uses them directly to avoid re-reading the transcript.
 func (h *Handler) generateMessage(hookData *HookData, status analyzer.Status, messages []jsonl.Message) (body, actions string) {
+	// Codex: build the body from the payload's last_assistant_message instead
+	// of the transcript (see handleStopEvent).
+	if product.Detect(hookData.TurnID, hookData.Model) == product.Codex {
+		body = summary.GenerateFromText(hookData.LastAssistantMessage, status, h.cfg)
+		if body == "" {
+			body = summary.GenerateSimple(status, h.cfg)
+		}
+		return body, ""
+	}
+
 	// Use pre-parsed messages if available (eliminates ~234ms double I/O)
 	if len(messages) > 0 {
 		body, actions = summary.GenerateFromMessagesStructured(messages, status, h.cfg)

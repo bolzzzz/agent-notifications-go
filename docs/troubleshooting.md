@@ -96,11 +96,11 @@ You run the bootstrap command from Windows Terminal or PowerShell, but the outpu
 
 ### Why it happens
 
-PowerShell can resolve `bash` to WSL. In that case the installer is running inside Linux, not Git Bash, so Linux platform detection is technically correct but not useful for Windows Claude Code.
+PowerShell and Windows Terminal can resolve `bash` to WSL. In that case the installer is running inside Linux, not Git Bash, so Linux platform detection is technically correct but not useful for Windows Claude Code.
 
 ### Fix
 
-Open Git Bash and run the bootstrap command there:
+Open Git Bash from the Start menu and run the bootstrap command there. Do not run the bootstrap `curl ... | bash` command from PowerShell if it opens WSL.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | bash

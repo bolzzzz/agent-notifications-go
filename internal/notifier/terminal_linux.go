@@ -59,7 +59,7 @@ func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd,
 	}
 
 	// Try to use daemon for click-to-focus
-	if err := sendViaDaemon(title, body, cwd, initialCWD); err == nil {
+	if err := sendViaDaemon(title, body, cfg.GetDesktopAppName(), cwd, initialCWD); err == nil {
 		logging.Debug("Notification sent via daemon with click-to-focus support")
 		return nil
 	} else {
@@ -74,7 +74,7 @@ func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd,
 // Returns an error if daemon is not available or fails.
 // cwd is used for the current-folder focus hint; initialCWD is used for the
 // session/project-folder focus hint.
-func sendViaDaemon(title, body, cwd, initialCWD string) error {
+func sendViaDaemon(title, body, appName, cwd, initialCWD string) error {
 	// Start daemon on-demand (no-op if already running)
 	if !daemon.StartDaemonOnDemand() {
 		return daemon.ErrDaemonNotAvailable
@@ -118,7 +118,7 @@ func sendViaDaemon(title, body, cwd, initialCWD string) error {
 	// Capture WezTerm pane info only when the focus target is actually WezTerm.
 	wezTermPaneID, wezTermSocket := daemon.GetWezTermFocusHints(focusTarget)
 
-	_, err = client.SendNotification(title, body, focusTarget, folderName, cwdFolderName, workspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, 2, 30)
+	_, err = client.SendNotification(title, body, appName, focusTarget, folderName, cwdFolderName, workspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, 2, 30)
 	return err
 }
 

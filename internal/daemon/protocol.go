@@ -48,6 +48,7 @@ type Response struct {
 type NotifyRequest struct {
 	Title              string `json:"title"`
 	Body               string `json:"body"`
+	AppName            string `json:"app_name,omitempty"`              // App name shown by the desktop environment (empty = daemon default)
 	FocusTarget        string `json:"focus_target"`                    // Terminal identifier (empty = auto-detect)
 	FocusFolder        string `json:"focus_folder,omitempty"`          // Session/project folder name for window-specific focus (initial cwd base)
 	FocusCWDFolder     string `json:"focus_cwd_folder,omitempty"`      // Current cwd folder name for fallback focus after Bash cd

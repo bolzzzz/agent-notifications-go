@@ -27,7 +27,7 @@ func sendTerminalBell() {
 		sendTmuxPaneBell()
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Fall back to the tmux pane tty if the write fails too, not just on open.
 	if _, err := f.Write([]byte("\a")); err != nil {
@@ -61,6 +61,6 @@ func sendTmuxPaneBell() {
 		logging.Debug("Could not open tmux pane tty %s for bell: %v", paneTTY, err)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, _ = f.Write([]byte("\a"))
 }

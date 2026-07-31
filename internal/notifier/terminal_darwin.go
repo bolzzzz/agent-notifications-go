@@ -173,7 +173,7 @@ func EnsureClaudeNotificationsApp() error {
 	if err := os.MkdirAll(iconsetDir, 0755); err != nil {
 		return err
 	}
-	defer os.RemoveAll(iconsetDir)
+	defer func() { _ = os.RemoveAll(iconsetDir) }()
 
 	// Generate icon sizes using sips
 	sizes := []struct {
@@ -244,7 +244,7 @@ func EnsureClaudeNotificationsApp() error {
 
 // sendLinuxNotification is a stub for macOS.
 // On macOS, click-to-focus is handled via terminal-notifier.
-func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd string) error {
+func sendLinuxNotification(title, body, appIcon string, cfg *config.Config, cwd, initialCWD string) error {
 	return fmt.Errorf("Linux notifications not available on macOS")
 }
 

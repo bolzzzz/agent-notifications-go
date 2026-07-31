@@ -10,18 +10,19 @@ jobs:
   test:
     name: Test on Windows
     runs-on: windows-latest
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.21', '1.22']
+        go: ['1.21', '1.26']
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
 
@@ -58,10 +59,10 @@ jobs:
         run: ./bin/claude-notifications.exe help
         shell: bash
 
-      - name: Test sound preview binary
+      - name: Build sound preview binary
         run: go build -o bin/sound-preview.exe ./cmd/sound-preview
 
-      - name: Test list-sounds binary
+      - name: Build list-sounds binary
         run: go build -o bin/list-sounds.exe ./cmd/list-sounds
 
       - name: Run install.sh unit tests
@@ -71,9 +72,3 @@ jobs:
       - name: Run install.sh E2E tests (offline + mock)
         run: bash bin/install_e2e_test.sh
         shell: bash
-
-      - name: Run install.sh E2E tests (real network)
-        run: bash bin/install_e2e_test.sh --real-network
-        shell: bash
-        timeout-minutes: 5
-        continue-on-error: true

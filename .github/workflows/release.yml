@@ -6,12 +6,56 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  verify-version:
+    name: Verify release version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Compare tag and version sources
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          release_version="${RELEASE_TAG#v}"
+          release_version_re='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          if [[ ! "$release_version" =~ $release_version_re ]]; then
+            echo "Release tag '$RELEASE_TAG' must use the stable vX.Y.Z format"
+            exit 1
+          fi
+
+          check_version() {
+            label="$1"
+            actual="$2"
+            if [ "$actual" != "$release_version" ]; then
+              echo "$label version '$actual' does not match tag '$release_version'"
+              exit 1
+            fi
+          }
+
+          check_version "Go binary" "$(sed -n 's/^const version = "\([^"]*\)"$/\1/p' cmd/claude-notifications/main.go)"
+          check_version "Plugin manifest" "$(jq -er '.version' .claude-plugin/plugin.json)"
+          check_version "Marketplace metadata" "$(jq -er '.metadata.version' .claude-plugin/marketplace.json)"
+          check_version "Marketplace plugin" "$(jq -er '.plugins[] | select(.name == "claude-notifications-go") | .version' .claude-plugin/marketplace.json)"
+
+          if ! awk -v heading="## [$release_version]" '
+            $0 == heading || index($0, heading " - ") == 1 { found = 1 }
+            END { exit(found ? 0 : 1) }
+          ' CHANGELOG.md; then
+            echo "CHANGELOG.md has no entry for $release_version"
+            exit 1
+          fi
+
   build-matrix:
     name: Build ${{ matrix.platform }} ${{ matrix.arch }}
+    needs: verify-version
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
       matrix:
@@ -21,17 +65,19 @@ jobs:
             platform: darwin
             arch: amd64
             binary: claude-notifications-darwin-amd64
-          - os: macos-latest
+            macos_deployment_target: '12.0'
+          - os: macos-15
             platform: darwin
             arch: arm64
             binary: claude-notifications-darwin-arm64
+            macos_deployment_target: '12.0'
 
           # Linux builds - use native runners
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             platform: linux
             arch: amd64
             binary: claude-notifications-linux-amd64
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-22.04-arm
             platform: linux
             arch: arm64
             binary: claude-notifications-linux-arm64
@@ -44,14 +90,14 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v7
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - name: Install Linux dependencies
         if: matrix.platform == 'linux'
@@ -63,26 +109,41 @@ jobs:
       - name: Build binaries
         env:
           CGO_ENABLED: '1'
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_deployment_target }}
         shell: bash
         run: |
           mkdir -p dist
           echo "Building claude-notifications..."
-          go build -ldflags="-s -w" -trimpath -o dist/${{ matrix.binary }} ./cmd/claude-notifications
+          go build -ldflags="-s -w" -trimpath -o "dist/${{ matrix.binary }}" ./cmd/claude-notifications
           echo "Building sound-preview..."
           SOUND_PREVIEW_BINARY="${{ matrix.binary }}"
           SOUND_PREVIEW_BINARY="${SOUND_PREVIEW_BINARY//claude-notifications/sound-preview}"
-          go build -ldflags="-s -w" -trimpath -o dist/$SOUND_PREVIEW_BINARY ./cmd/sound-preview
+          go build -ldflags="-s -w" -trimpath -o "dist/$SOUND_PREVIEW_BINARY" ./cmd/sound-preview
           echo "Building list-devices..."
           LIST_DEVICES_BINARY="${{ matrix.binary }}"
           LIST_DEVICES_BINARY="${LIST_DEVICES_BINARY//claude-notifications/list-devices}"
-          go build -ldflags="-s -w" -trimpath -o dist/$LIST_DEVICES_BINARY ./cmd/list-devices
+          go build -ldflags="-s -w" -trimpath -o "dist/$LIST_DEVICES_BINARY" ./cmd/list-devices
           echo "Building list-sounds..."
           LIST_SOUNDS_BINARY="${{ matrix.binary }}"
           LIST_SOUNDS_BINARY="${LIST_SOUNDS_BINARY//claude-notifications/list-sounds}"
-          go build -ldflags="-s -w" -trimpath -o dist/$LIST_SOUNDS_BINARY ./cmd/list-sounds
+          go build -ldflags="-s -w" -trimpath -o "dist/$LIST_SOUNDS_BINARY" ./cmd/list-sounds
+
+      - name: Verify macOS deployment target
+        if: matrix.platform == 'darwin'
+        run: |
+          for binary in dist/*; do
+            minos="$(otool -l "$binary" | awk '$1 == "minos" { print $2; exit }')"
+            case "$minos" in
+              12|12.*) ;;
+              *)
+                echo "$binary has unexpected minimum macOS version: ${minos:-missing}"
+                exit 1
+                ;;
+            esac
+          done
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binaries-${{ matrix.platform }}-${{ matrix.arch }}
           path: dist/*
@@ -90,11 +151,13 @@ jobs:
 
   build-notifier:
     name: Build ClaudeNotifier.app (macOS)
-    runs-on: macos-latest
+    needs: verify-version
+    runs-on: macos-15
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Import Apple certificate
         env:
@@ -144,7 +207,7 @@ jobs:
           ls -lh ClaudeNotifier.app.zip
 
       - name: Upload notifier artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ClaudeNotifier
           path: swift-notifier/ClaudeNotifier.app.zip
@@ -152,15 +215,18 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [build-matrix, build-notifier]
+    needs: [build-matrix, build-notifier, test-binaries]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist-artifacts
 
@@ -173,12 +239,12 @@ jobs:
       - name: Create checksums
         run: |
           cd dist
-          sha256sum * > checksums.txt
+          sha256sum -- * > checksums.txt
           cat checksums.txt
           cd ..
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           draft: false
@@ -188,32 +254,78 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-binaries:
-    name: Test ${{ matrix.os }} binary
-    needs: create-release
+    name: Test ${{ matrix.platform }} ${{ matrix.arch }} binary
+    needs: build-matrix
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
+            platform: linux
+            arch: amd64
             binary: claude-notifications-linux-amd64
-          - os: macos-latest
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+            binary: claude-notifications-linux-arm64
+          - os: macos-15-intel
+            platform: darwin
+            arch: amd64
+            binary: claude-notifications-darwin-amd64
+          - os: macos-26
+            platform: darwin
+            arch: arm64
             binary: claude-notifications-darwin-arm64
           - os: windows-latest
+            platform: windows
+            arch: amd64
             binary: claude-notifications-windows-amd64.exe
 
     steps:
-      - name: Download release binary
-        uses: robinraju/release-downloader@v1.8
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v8
         with:
-          tag: ${{ github.ref_name }}
-          fileName: ${{ matrix.binary }}
+          name: binaries-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist
 
-      - name: Make binary executable (Unix)
+      - name: Verify artifact set
+        env:
+          MAIN_BINARY: ${{ matrix.binary }}
+        run: |
+          for prefix in claude-notifications sound-preview list-devices list-sounds; do
+            binary="${MAIN_BINARY/claude-notifications/$prefix}"
+            if [ ! -s "dist/$binary" ]; then
+              echo "Missing or empty artifact: $binary"
+              exit 1
+            fi
+          done
+        shell: bash
+
+      - name: Make binaries executable (Unix)
         if: runner.os != 'Windows'
-        run: chmod +x ${{ matrix.binary }}
+        run: chmod +x dist/*
 
-      - name: Test binary
-        run: ./${{ matrix.binary }} version
+      - name: Test main binary version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          output="$("./dist/${{ matrix.binary }}" version)"
+          expected="claude-notifications $RELEASE_TAG"
+          if [ "$output" != "$expected" ]; then
+            echo "Unexpected version output: '$output' (expected '$expected')"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Smoke-test companion binaries
+        env:
+          MAIN_BINARY: ${{ matrix.binary }}
+        run: |
+          sound_preview="${MAIN_BINARY/claude-notifications/sound-preview}"
+          list_sounds="${MAIN_BINARY/claude-notifications/list-sounds}"
+          "./dist/$sound_preview" --help
+          "./dist/$list_sounds" --help
         shell: bash

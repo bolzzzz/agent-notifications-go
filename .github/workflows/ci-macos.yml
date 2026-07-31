@@ -8,20 +8,25 @@ on:
 
 jobs:
   test:
-    name: Test on macOS
-    runs-on: macos-latest
+    name: Test on macOS (${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.21', '1.22']
+        include:
+          - go: '1.21'
+            os: macos-15
+          - go: '1.26'
+            os: macos-26
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
 
@@ -55,17 +60,17 @@ jobs:
       - name: Test binary execution (help)
         run: ./bin/claude-notifications help
 
-      - name: Test sound preview binary
+      - name: Build sound preview binary
         run: go build -o bin/sound-preview ./cmd/sound-preview
 
-      - name: Test list-sounds binary
+      - name: Build list-sounds binary
         run: go build -o bin/list-sounds ./cmd/list-sounds
 
       - name: Check for system sounds
         run: |
           if [ -d "/System/Library/Sounds" ]; then
             echo "✓ System sounds directory found"
-            ls -la /System/Library/Sounds/*.aiff | head -3
+            find /System/Library/Sounds -maxdepth 1 -type f -name '*.aiff' -print | sed -n '1,3p'
           else
             echo "⚠ System sounds directory not found (expected on macOS)"
           fi
@@ -76,7 +81,20 @@ jobs:
       - name: Run install.sh E2E tests (offline + mock)
         run: bash bin/install_e2e_test.sh
 
-      - name: Run install.sh E2E tests (real network)
+      - name: Run install.sh E2E diagnostics (real network)
+        if: matrix.go == '1.26'
         run: bash bin/install_e2e_test.sh --real-network
         timeout-minutes: 5
         continue-on-error: true
+
+  swift-test:
+    name: Swift notifier tests
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Run Swift tests
+        run: swift test --package-path swift-notifier

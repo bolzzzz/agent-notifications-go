@@ -42,3 +42,22 @@ func TestAncestorPIDs_WellFormed(t *testing.T) {
 		seen[pid] = true
 	}
 }
+
+func TestAncestorChainStopsBeforeCycle(t *testing.T) {
+	parents := map[uint32]uint32{
+		10: 20,
+		20: 30,
+		30: 20,
+	}
+
+	chain := ancestorChain(parents, 10)
+	want := []uint32{20, 30}
+	if len(chain) != len(want) {
+		t.Fatalf("ancestorChain() = %v, want %v", chain, want)
+	}
+	for i := range want {
+		if chain[i] != want[i] {
+			t.Fatalf("ancestorChain() = %v, want %v", chain, want)
+		}
+	}
+}

@@ -451,6 +451,7 @@ UNAME_EOF
 
     assert_exit_code 1 $exit_code "WSL install exits before Linux setup"
     assert_contains "$output" "WSL environment detected" "WSL guard message shown"
+    assert_contains "$output" "PowerShell or Windows Terminal" "WSL guard explains PowerShell bash routing"
     assert_contains "$output" "Git Bash" "Windows Git Bash guidance shown"
     assert_not_contains "$output" "Platform:" "WSL guard stops before platform output"
     assert_dir_not_exists "$TEST_DIR/.install.lock" "WSL guard stops before acquiring install lock"

@@ -672,3 +672,15 @@ func GetDefaultMessage(status analyzer.Status, cfg *config.Config) string {
 func GenerateSimple(status analyzer.Status, cfg *config.Config) string {
 	return GetDefaultMessage(status, cfg)
 }
+
+// GenerateFromText builds a notification body from a plain-text assistant
+// message. Codex hooks provide last_assistant_message directly in the event
+// payload, so no transcript parsing is involved. Returns "" when the text has
+// no usable content so callers can fall back to GenerateSimple.
+func GenerateFromText(text string, status analyzer.Status, cfg *config.Config) string {
+	cleaned := strings.TrimSpace(CleanMarkdown(text))
+	if cleaned == "" {
+		return ""
+	}
+	return truncateText(cleaned, 200)
+}

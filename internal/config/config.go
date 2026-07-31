@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/777genius/claude-notifications/internal/logging"
 	"github.com/777genius/claude-notifications/internal/platform"
@@ -46,6 +47,7 @@ type DesktopConfig struct {
 	Volume           float64 `json:"volume"`           // Volume level 0.0-1.0, default 1.0 (full volume)
 	AudioDevice      string  `json:"audioDevice"`      // Audio output device name (empty = system default)
 	AppIcon          string  `json:"appIcon"`          // Path to app icon
+	AppName          string  `json:"appName"`          // App name shown by the desktop environment (empty = "codex-claude-notifications")
 	ClickToFocus     bool    `json:"clickToFocus"`     // macOS/Linux/Windows: activate the originating terminal window on notification click (default: true)
 	TerminalBundleID string  `json:"terminalBundleId"` // macOS: override auto-detected terminal bundle ID (empty = auto)
 }
@@ -143,12 +145,28 @@ const defaultSuppressQuestionAfterAnyNotificationSeconds = 7
 
 // DefaultConfig returns a config with sensible defaults
 func DefaultConfig() *Config {
+	return defaultConfig("")
+}
+
+func defaultConfig(resolvedPluginRoot string) *Config {
 	// Get plugin root from environment, fallback to current directory
-	pluginRoot := platform.ExpandEnv("${CLAUDE_PLUGIN_ROOT}")
-	if pluginRoot == "" || pluginRoot == "${CLAUDE_PLUGIN_ROOT}" {
+	pluginRoot := resolvedPluginRoot
+	if pluginRoot == "" {
+		pluginRoot = platform.ExpandEnv("${CLAUDE_PLUGIN_ROOT}")
+	}
+	if isUnresolvedPluginRoot(pluginRoot) {
 		pluginRoot = "."
 	}
+	return buildDefaultConfig(pluginRoot)
+}
 
+func isUnresolvedPluginRoot(pluginRoot string) bool {
+	return pluginRoot == "" ||
+		pluginRoot == "$CLAUDE_PLUGIN_ROOT" ||
+		pluginRoot == "${CLAUDE_PLUGIN_ROOT}"
+}
+
+func buildDefaultConfig(pluginRoot string) *Config {
 	return &Config{
 		Notifications: NotificationsConfig{
 			Desktop: DesktopConfig{
@@ -223,9 +241,13 @@ func DefaultConfig() *Config {
 // Load loads configuration from a file
 // If the file doesn't exist, returns default config
 func Load(path string) (*Config, error) {
+	return load(path, "")
+}
+
+func load(path, pluginRoot string) (*Config, error) {
 	// If path doesn't exist, use default config
 	if !platform.FileExists(path) {
-		return DefaultConfig(), nil
+		return defaultConfig(pluginRoot), nil
 	}
 
 	data, err := os.ReadFile(path)
@@ -233,25 +255,88 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	config := DefaultConfig()
+	config := defaultConfigForLoad(pluginRoot)
+	statusDefaults := make(map[string]StatusInfo, len(config.Statuses))
+	for status, info := range config.Statuses {
+		statusDefaults[status] = info
+	}
 	if err := json.Unmarshal(data, config); err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+	if err := mergeStatusOverrides(data, config, statusDefaults); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
 	// Expand environment variables in paths
-	config.Notifications.Desktop.AppIcon = platform.ExpandEnv(config.Notifications.Desktop.AppIcon)
+	config.Notifications.Desktop.AppIcon = expandPath(config.Notifications.Desktop.AppIcon, pluginRoot)
 	config.Notifications.Webhook.URL = platform.ExpandEnv(config.Notifications.Webhook.URL)
 
 	// Expand environment variables in sound paths
 	for status, info := range config.Statuses {
-		info.Sound = platform.ExpandEnv(info.Sound)
+		info.Sound = expandPath(info.Sound, pluginRoot)
 		config.Statuses[status] = info
 	}
 
 	// Apply defaults for missing fields
-	config.ApplyDefaults()
+	config.applyDefaults(pluginRoot)
 
 	return config, nil
+}
+
+func defaultConfigForLoad(pluginRoot string) *Config {
+	resolvedRoot := pluginRoot
+	if resolvedRoot == "" {
+		resolvedRoot = os.Getenv("CLAUDE_PLUGIN_ROOT")
+	}
+	if isUnresolvedPluginRoot(resolvedRoot) {
+		return buildDefaultConfig(".")
+	}
+
+	// Keep defaults symbolic until expandPath processes config values. Injecting
+	// a resolved root here would make literal '$' segments expand a second time.
+	return buildDefaultConfig("${CLAUDE_PLUGIN_ROOT}")
+}
+
+// mergeStatusOverrides preserves defaults for fields omitted from an individual
+// status object. encoding/json otherwise replaces map values with zero structs.
+func mergeStatusOverrides(data []byte, config *Config, defaults map[string]StatusInfo) error {
+	var rawConfig struct {
+		Statuses map[string]json.RawMessage `json:"statuses"`
+	}
+	if err := json.Unmarshal(data, &rawConfig); err != nil {
+		return err
+	}
+	if rawConfig.Statuses == nil {
+		return nil
+	}
+	if config.Statuses == nil {
+		config.Statuses = make(map[string]StatusInfo)
+	}
+	for status, rawStatus := range rawConfig.Statuses {
+		info := defaults[status]
+		if err := json.Unmarshal(rawStatus, &info); err != nil {
+			return fmt.Errorf("invalid status %q: %w", status, err)
+		}
+		config.Statuses[status] = info
+	}
+	return nil
+}
+
+func expandEnv(value, pluginRoot string) string {
+	return os.Expand(value, func(key string) string {
+		if key == "CLAUDE_PLUGIN_ROOT" && pluginRoot != "" {
+			return pluginRoot
+		}
+		return os.Getenv(key)
+	})
+}
+
+func expandPath(value, pluginRoot string) string {
+	expanded := expandEnv(value, pluginRoot)
+	if expanded == "" {
+		return ""
+	}
+	return filepath.Clean(expanded)
 }
 
 // GetStableConfigDir returns the stable config directory outside the plugin cache.
@@ -262,6 +347,20 @@ func GetStableConfigDir() (string, error) {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
 	return filepath.Join(home, ".claude", "claude-notifications-go"), nil
+}
+
+// GetStableConfigDirs returns the stable config directories in preference
+// order. The Codex path lets Codex-only users keep config next to their other
+// Codex settings; the Claude path stays first for backward compatibility.
+func GetStableConfigDirs() ([]string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("cannot determine home directory: %w", err)
+	}
+	return []string{
+		filepath.Join(home, ".claude", "claude-notifications-go"),
+		filepath.Join(home, ".codex", "claude-notifications-go"),
+	}, nil
 }
 
 // GetStableConfigPath returns the stable config file path outside the plugin cache.
@@ -281,37 +380,42 @@ func GetStableConfigPath() (string, error) {
 // Corrupted config files are non-fatal: a warning is printed to stderr and
 // logged, then the next source in the chain is tried.
 func LoadFromPluginRoot(pluginRoot string) (*Config, error) {
-	// 1. Try stable path
+	// 1. Try stable paths (~/.claude first, then ~/.codex)
 	stablePath, stableErr := GetStableConfigPath()
-	if stableErr != nil {
+	stableDirs, stableDirsErr := GetStableConfigDirs()
+	if stableErr != nil || stableDirsErr != nil {
 		msg := fmt.Sprintf("warning: cannot resolve stable config path: %v, using legacy path only", stableErr)
 		fmt.Fprintln(os.Stderr, msg)
 		logging.Warn("%s", msg)
 	}
-	if stableErr == nil {
-		if platform.FileExists(stablePath) {
-			cfg, err := Load(stablePath)
+	if stableDirsErr == nil {
+		for _, dir := range stableDirs {
+			candidate := filepath.Join(dir, "config.json")
+			if !platform.FileExists(candidate) {
+				continue
+			}
+			cfg, err := load(candidate, pluginRoot)
 			if err != nil {
-				// Corrupted stable config — warn and fall through to old path
-				msg := fmt.Sprintf("warning: failed to load config from %s: %v, trying legacy path", stablePath, err)
+				// Corrupted stable config — warn and try the next source
+				msg := fmt.Sprintf("warning: failed to load config from %s: %v, trying next path", candidate, err)
 				fmt.Fprintln(os.Stderr, msg)
 				logging.Warn("%s", msg)
-			} else {
-				return cfg, nil
+				continue
 			}
+			return cfg, nil
 		}
 	}
 
 	// 2. Try old path (pluginRoot/config/config.json)
 	oldPath := filepath.Join(pluginRoot, "config", "config.json")
 	if platform.FileExists(oldPath) {
-		cfg, err := Load(oldPath)
+		cfg, err := load(oldPath, pluginRoot)
 		if err != nil {
 			// Corrupted old config — warn, return defaults (non-fatal)
 			msg := fmt.Sprintf("warning: corrupted config at %s, using defaults", oldPath)
 			fmt.Fprintln(os.Stderr, msg)
 			logging.Warn("%s", msg)
-			return DefaultConfig(), nil
+			return defaultConfig(pluginRoot), nil
 		}
 
 		// Migrate to stable path (best-effort)
@@ -327,7 +431,7 @@ func LoadFromPluginRoot(pluginRoot string) (*Config, error) {
 	}
 
 	// 3. Neither path has config — return defaults
-	return DefaultConfig(), nil
+	return defaultConfig(pluginRoot), nil
 }
 
 // migrateConfig copies config from oldPath to stablePath atomically.
@@ -349,14 +453,14 @@ func migrateConfig(oldPath, stablePath string) error {
 		return err
 	}
 	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath) // cleanup on any error path
+	defer func() { _ = os.Remove(tmpPath) }() // cleanup on any error path
 
 	if _, err := tmpFile.Write(data); err != nil {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		return err
 	}
 	if err := tmpFile.Sync(); err != nil {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		return err
 	}
 	if err := tmpFile.Close(); err != nil {
@@ -370,6 +474,10 @@ func migrateConfig(oldPath, stablePath string) error {
 
 // ApplyDefaults fills in missing fields with default values
 func (c *Config) ApplyDefaults() {
+	c.applyDefaults("")
+}
+
+func (c *Config) applyDefaults(pluginRoot string) {
 	// Desktop defaults
 	if c.Notifications.Desktop.Volume == 0 {
 		c.Notifications.Desktop.Volume = 1.0 // Default to full volume
@@ -399,7 +507,7 @@ func (c *Config) ApplyDefaults() {
 	}
 
 	// Status defaults
-	defaults := DefaultConfig()
+	defaults := defaultConfig(pluginRoot)
 	if c.Statuses == nil {
 		c.Statuses = defaults.Statuses
 	} else {
@@ -505,6 +613,22 @@ func (c *Config) GetStatusInfo(status string) (StatusInfo, bool) {
 // IsDesktopEnabled returns true if desktop notifications are enabled
 func (c *Config) IsDesktopEnabled() bool {
 	return c.Notifications.Desktop.Enabled
+}
+
+// defaultDesktopAppName is the app name shown by the desktop environment for
+// notifications (GNOME/macOS banner header, Windows toast attribution). Fixed
+// across products/platforms: Windows needs a stable name to avoid leaving
+// stale registry entries, and GNOME/Wayland's notification identity is
+// pinned to a single installed desktop entry regardless of AppName anyway.
+const defaultDesktopAppName = "codex-claude-notifications"
+
+// GetDesktopAppName returns the app name shown by the desktop environment for
+// notifications. Set desktop.appName in the config to override.
+func (c *Config) GetDesktopAppName() string {
+	if v := strings.TrimSpace(c.Notifications.Desktop.AppName); v != "" {
+		return v
+	}
+	return defaultDesktopAppName
 }
 
 // IsWebhookEnabled returns true if webhook notifications are enabled

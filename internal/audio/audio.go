@@ -231,7 +231,7 @@ func (p *Player) decodeAudio(soundPath string) ([]int16, uint32, int, error) {
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to open audio file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	ext := strings.ToLower(filepath.Ext(soundPath))
 
@@ -256,7 +256,7 @@ func (p *Player) decodeMP3(f *os.File) ([]int16, uint32, int, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	defer streamer.Close()
+	defer func() { _ = streamer.Close() }()
 
 	return streamToSamples(streamer, int(format.SampleRate), format.NumChannels)
 }
@@ -266,7 +266,7 @@ func (p *Player) decodeWAV(f *os.File) ([]int16, uint32, int, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	defer streamer.Close()
+	defer func() { _ = streamer.Close() }()
 
 	return streamToSamples(streamer, int(format.SampleRate), format.NumChannels)
 }
@@ -276,7 +276,7 @@ func (p *Player) decodeFLAC(f *os.File) ([]int16, uint32, int, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	defer streamer.Close()
+	defer func() { _ = streamer.Close() }()
 
 	return streamToSamples(streamer, int(format.SampleRate), format.NumChannels)
 }
@@ -286,7 +286,7 @@ func (p *Player) decodeOGG(f *os.File) ([]int16, uint32, int, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	defer streamer.Close()
+	defer func() { _ = streamer.Close() }()
 
 	return streamToSamples(streamer, int(format.SampleRate), format.NumChannels)
 }
