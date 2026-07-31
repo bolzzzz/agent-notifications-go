@@ -298,9 +298,11 @@ func TestTmuxE2E(t *testing.T) {
 // --- helpers ---
 
 // mustRunTmux runs a tmux command on the isolated server and fails the test on error.
+// -f /dev/null skips the user's tmux.conf so options like a customized
+// base-index can't shift window/pane numbering out from under the test.
 func mustRunTmux(t *testing.T, tmuxPath, socketPath string, args ...string) {
 	t.Helper()
-	fullArgs := append([]string{"-S", socketPath}, args...)
+	fullArgs := append([]string{"-S", socketPath, "-f", "/dev/null"}, args...)
 	out, err := exec.Command(tmuxPath, fullArgs...).CombinedOutput()
 	if err != nil {
 		t.Fatalf("tmux %v failed: %v, output: %s", args, err, string(out))
@@ -310,7 +312,7 @@ func mustRunTmux(t *testing.T, tmuxPath, socketPath string, args ...string) {
 // runTmux runs a tmux command and returns stdout.
 func runTmux(t *testing.T, tmuxPath, socketPath string, args ...string) string {
 	t.Helper()
-	fullArgs := append([]string{"-S", socketPath}, args...)
+	fullArgs := append([]string{"-S", socketPath, "-f", "/dev/null"}, args...)
 	out, err := exec.Command(tmuxPath, fullArgs...).CombinedOutput()
 	if err != nil {
 		t.Fatalf("tmux %v failed: %v, output: %s", args, err, string(out))
