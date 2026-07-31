@@ -33,12 +33,3 @@ func Detect(turnID, model string) string {
 	}
 	return Claude
 }
-
-// Name returns a human-friendly product name for user-visible text
-// (notifications, webhook footers, logs).
-func Name(product string) string {
-	if product == Codex {
-		return "Codex"
-	}
-	return "Claude Code"
-}

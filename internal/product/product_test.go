@@ -29,12 +29,3 @@ func TestDetect(t *testing.T) {
 		}
 	})
 }
-
-func TestName(t *testing.T) {
-	if got := Name(Codex); got != "Codex" {
-		t.Errorf("Name(Codex) = %q, want %q", got, "Codex")
-	}
-	if got := Name(Claude); got != "Claude Code" {
-		t.Errorf("Name(Claude) = %q, want %q", got, "Claude Code")
-	}
-}

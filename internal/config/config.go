@@ -9,7 +9,6 @@ import (
 
 	"github.com/777genius/claude-notifications/internal/logging"
 	"github.com/777genius/claude-notifications/internal/platform"
-	"github.com/777genius/claude-notifications/internal/product"
 )
 
 // Config represents the plugin configuration
@@ -48,7 +47,7 @@ type DesktopConfig struct {
 	Volume           float64 `json:"volume"`           // Volume level 0.0-1.0, default 1.0 (full volume)
 	AudioDevice      string  `json:"audioDevice"`      // Audio output device name (empty = system default)
 	AppIcon          string  `json:"appIcon"`          // Path to app icon
-	AppName          string  `json:"appName"`          // App name shown by the desktop environment (empty = auto: "Codex" or "Claude Code")
+	AppName          string  `json:"appName"`          // App name shown by the desktop environment (empty = "codex-claude-notifications")
 	ClickToFocus     bool    `json:"clickToFocus"`     // macOS/Linux/Windows: activate the originating terminal window on notification click (default: true)
 	TerminalBundleID string  `json:"terminalBundleId"` // macOS: override auto-detected terminal bundle ID (empty = auto)
 }
@@ -616,15 +615,20 @@ func (c *Config) IsDesktopEnabled() bool {
 	return c.Notifications.Desktop.Enabled
 }
 
+// defaultDesktopAppName is the app name shown by the desktop environment for
+// notifications (GNOME/macOS banner header, Windows toast attribution). Fixed
+// across products/platforms: Windows needs a stable name to avoid leaving
+// stale registry entries, and GNOME/Wayland's notification identity is
+// pinned to a single installed desktop entry regardless of AppName anyway.
+const defaultDesktopAppName = "codex-claude-notifications"
+
 // GetDesktopAppName returns the app name shown by the desktop environment for
-// notifications (GNOME/macOS banner header, Windows toast attribution).
-// Defaults to "Codex" when invoked from Codex hooks (PLUGIN_ROOT is set),
-// otherwise "Claude Code". Set desktop.appName in the config to override.
+// notifications. Set desktop.appName in the config to override.
 func (c *Config) GetDesktopAppName() string {
 	if v := strings.TrimSpace(c.Notifications.Desktop.AppName); v != "" {
 		return v
 	}
-	return product.Name(product.Detect("", ""))
+	return defaultDesktopAppName
 }
 
 // IsWebhookEnabled returns true if webhook notifications are enabled
