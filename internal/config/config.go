@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/777genius/claude-notifications/internal/logging"
 	"github.com/777genius/claude-notifications/internal/platform"
+	"github.com/777genius/claude-notifications/internal/product"
 )
 
 // Config represents the plugin configuration
@@ -46,6 +48,7 @@ type DesktopConfig struct {
 	Volume           float64 `json:"volume"`           // Volume level 0.0-1.0, default 1.0 (full volume)
 	AudioDevice      string  `json:"audioDevice"`      // Audio output device name (empty = system default)
 	AppIcon          string  `json:"appIcon"`          // Path to app icon
+	AppName          string  `json:"appName"`          // App name shown by the desktop environment (empty = auto: "Codex" or "Claude Code")
 	ClickToFocus     bool    `json:"clickToFocus"`     // macOS/Linux/Windows: activate the originating terminal window on notification click (default: true)
 	TerminalBundleID string  `json:"terminalBundleId"` // macOS: override auto-detected terminal bundle ID (empty = auto)
 }
@@ -347,6 +350,20 @@ func GetStableConfigDir() (string, error) {
 	return filepath.Join(home, ".claude", "claude-notifications-go"), nil
 }
 
+// GetStableConfigDirs returns the stable config directories in preference
+// order. The Codex path lets Codex-only users keep config next to their other
+// Codex settings; the Claude path stays first for backward compatibility.
+func GetStableConfigDirs() ([]string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("cannot determine home directory: %w", err)
+	}
+	return []string{
+		filepath.Join(home, ".claude", "claude-notifications-go"),
+		filepath.Join(home, ".codex", "claude-notifications-go"),
+	}, nil
+}
+
 // GetStableConfigPath returns the stable config file path outside the plugin cache.
 func GetStableConfigPath() (string, error) {
 	dir, err := GetStableConfigDir()
@@ -364,24 +381,29 @@ func GetStableConfigPath() (string, error) {
 // Corrupted config files are non-fatal: a warning is printed to stderr and
 // logged, then the next source in the chain is tried.
 func LoadFromPluginRoot(pluginRoot string) (*Config, error) {
-	// 1. Try stable path
+	// 1. Try stable paths (~/.claude first, then ~/.codex)
 	stablePath, stableErr := GetStableConfigPath()
-	if stableErr != nil {
+	stableDirs, stableDirsErr := GetStableConfigDirs()
+	if stableErr != nil || stableDirsErr != nil {
 		msg := fmt.Sprintf("warning: cannot resolve stable config path: %v, using legacy path only", stableErr)
 		fmt.Fprintln(os.Stderr, msg)
 		logging.Warn("%s", msg)
 	}
-	if stableErr == nil {
-		if platform.FileExists(stablePath) {
-			cfg, err := load(stablePath, pluginRoot)
+	if stableDirsErr == nil {
+		for _, dir := range stableDirs {
+			candidate := filepath.Join(dir, "config.json")
+			if !platform.FileExists(candidate) {
+				continue
+			}
+			cfg, err := load(candidate, pluginRoot)
 			if err != nil {
-				// Corrupted stable config — warn and fall through to old path
-				msg := fmt.Sprintf("warning: failed to load config from %s: %v, trying legacy path", stablePath, err)
+				// Corrupted stable config — warn and try the next source
+				msg := fmt.Sprintf("warning: failed to load config from %s: %v, trying next path", candidate, err)
 				fmt.Fprintln(os.Stderr, msg)
 				logging.Warn("%s", msg)
-			} else {
-				return cfg, nil
+				continue
 			}
+			return cfg, nil
 		}
 	}
 
@@ -592,6 +614,17 @@ func (c *Config) GetStatusInfo(status string) (StatusInfo, bool) {
 // IsDesktopEnabled returns true if desktop notifications are enabled
 func (c *Config) IsDesktopEnabled() bool {
 	return c.Notifications.Desktop.Enabled
+}
+
+// GetDesktopAppName returns the app name shown by the desktop environment for
+// notifications (GNOME/macOS banner header, Windows toast attribution).
+// Defaults to "Codex" when invoked from Codex hooks (PLUGIN_ROOT is set),
+// otherwise "Claude Code". Set desktop.appName in the config to override.
+func (c *Config) GetDesktopAppName() string {
+	if v := strings.TrimSpace(c.Notifications.Desktop.AppName); v != "" {
+		return v
+	}
+	return product.Name(product.Detect("", ""))
 }
 
 // IsWebhookEnabled returns true if webhook notifications are enabled

@@ -16,7 +16,7 @@
 </table>
 </div>
 
-Smart notifications for Claude Code with click-to-focus, git branch display, and webhook integrations.
+Smart notifications for Claude Code and Codex with click-to-focus, git branch display, and webhook integrations.
 
 > **Boost your productivity** — check out the [advanced task manager for Claude with a convenient UI](https://github.com/777genius/claude_agent_teams_ui), from the creator of this plugin.
 
@@ -27,6 +27,7 @@ Smart notifications for Claude Code with click-to-focus, git branch display, and
     - [Prerequisites](#prerequisites)
     - [Quick Install (Recommended)](#quick-install-recommended)
     - [Manual Install](#manual-install)
+    - [Codex Install](#codex-install)
     - [Updating](#updating)
   - [Supported Notification Types](#supported-notification-types)
   - [Platform Support](#platform-support)
@@ -98,6 +99,28 @@ Run these slash commands in the Claude Code chat, not in your system terminal:
 </details>
 
 > Having issues with installation? See [Troubleshooting](#troubleshooting).
+
+### Codex Install
+
+The same plugin also works with [Codex CLI](https://github.com/openai/codex) (hooks are stable and enabled by default). From your system terminal:
+
+```bash
+# 1) Add the marketplace
+codex plugin marketplace add 777genius/claude-notifications-go
+# 2) Install the plugin
+codex plugin add claude-notifications-go@claude-notifications-go
+```
+
+Then restart Codex and run `/hooks` to review and trust the plugin's hooks — Codex skips non-managed hooks until you trust them.
+
+Codex notifications fire on:
+
+- **Stop** — a turn completes. The message body comes from Codex's `last_assistant_message` payload field (a trailing `?` is classified as a question)
+- **PreToolUse `request_user_input`** — Codex is waiting for your answer
+- **PermissionRequest** — an approval prompt is waiting
+- **SubagentStop** — a subagent finishes (same `notifyOnSubagentStop` opt-in as Claude Code)
+
+Configuration is shared with the Claude Code setup: `~/.claude/claude-notifications-go/config.json` is read first, then `~/.codex/claude-notifications-go/config.json`. The Codex plugin manifest lives in `.codex-plugin/plugin.json` and points at `hooks/hooks-codex.json` (the Claude Code hook definitions in `hooks/hooks.json` are unchanged).
 
 ### Updating
 

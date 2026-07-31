@@ -718,6 +718,34 @@ func TestGenerateSimple(t *testing.T) {
 	}
 }
 
+func TestGenerateFromText(t *testing.T) {
+	cfg := config.DefaultConfig()
+
+	t.Run("empty text returns empty", func(t *testing.T) {
+		if got := GenerateFromText("", analyzer.StatusTaskComplete, cfg); got != "" {
+			t.Errorf("GenerateFromText(\"\") = %q, want \"\"", got)
+		}
+	})
+
+	t.Run("markdown is cleaned", func(t *testing.T) {
+		got := GenerateFromText("**Done.** Fixed `main.go` and ran tests.", analyzer.StatusTaskComplete, cfg)
+		if strings.Contains(got, "**") || strings.Contains(got, "`") {
+			t.Errorf("GenerateFromText should strip markdown, got %q", got)
+		}
+		if !strings.Contains(got, "Fixed main.go") {
+			t.Errorf("GenerateFromText lost content, got %q", got)
+		}
+	})
+
+	t.Run("long text is truncated", func(t *testing.T) {
+		long := strings.Repeat("word ", 100)
+		got := GenerateFromText(long, analyzer.StatusTaskComplete, cfg)
+		if len([]rune(got)) > 220 {
+			t.Errorf("GenerateFromText should truncate, got %d runes", len([]rune(got)))
+		}
+	})
+}
+
 // === Helper functions ===
 
 func buildTestTranscript(tools []string, responseText string, timestamp time.Time) []jsonl.Message {

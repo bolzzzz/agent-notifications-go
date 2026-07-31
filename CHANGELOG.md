@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Codex CLI support** - the plugin now doubles as a Codex plugin: `.codex-plugin/plugin.json` and `hooks/hooks-codex.json` wire Codex `Stop`, `SubagentStop`, `PermissionRequest`, and `request_user_input` PreToolUse events into the same notification pipeline (`.agents/plugins/marketplace.json` allows `codex plugin marketplace add`). Codex events are detected via the payload's `turn_id`/`model` extension fields and classified from `last_assistant_message` instead of parsing the rollout transcript; a trailing `?` is treated as a question. Configuration is additionally read from `~/.codex/claude-notifications-go/config.json`, and the plugin root falls back to Codex's `PLUGIN_ROOT` environment variable.
+
 ## [1.40.1] - 2026-07-17
 
 ### Changed

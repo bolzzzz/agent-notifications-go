@@ -415,6 +415,12 @@ func getPluginRoot() string {
 		return root
 	}
 
+	// Codex exports PLUGIN_ROOT for plugin-bundled hooks (it also sets
+	// CLAUDE_PLUGIN_ROOT for compatibility, so this is only a fallback).
+	if root := os.Getenv("PLUGIN_ROOT"); root != "" {
+		return root
+	}
+
 	// Try to find plugin root relative to executable
 	exe, err := os.Executable()
 	if err == nil {

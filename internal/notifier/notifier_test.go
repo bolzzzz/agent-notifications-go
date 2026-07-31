@@ -272,8 +272,8 @@ func TestSendWithBeeep_WindowsToastFallbackSuccess(t *testing.T) {
 	var called bool
 	withBeeepNotify(t, func(title, message string, icon any) error {
 		called = true
-		if beeep.AppName != "Claude Code Notifications" {
-			t.Fatalf("beeep.AppName during Notify = %q, want fixed Windows app name", beeep.AppName)
+		if beeep.AppName != cfg.GetDesktopAppName() {
+			t.Fatalf("beeep.AppName during Notify = %q, want fixed Windows app name %q", beeep.AppName, cfg.GetDesktopAppName())
 		}
 		return errors.Join(fmt.Errorf("doc.LoadXml(tmpl): error 3222070623"))
 	})

@@ -164,10 +164,11 @@ func contains(slice []string, str string) bool {
 // GetStatusForPreToolUse determines status for PreToolUse hook
 // This is called BEFORE tool execution, so we only have the tool name
 func GetStatusForPreToolUse(toolName string) Status {
-	if toolName == "ExitPlanMode" {
+	switch toolName {
+	case "ExitPlanMode":
 		return StatusPlanReady
-	}
-	if toolName == "AskUserQuestion" {
+	case "AskUserQuestion", "request_user_input":
+		// request_user_input is the Codex equivalent of AskUserQuestion.
 		return StatusQuestion
 	}
 	return StatusUnknown

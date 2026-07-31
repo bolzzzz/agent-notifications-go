@@ -485,6 +485,29 @@ func SendQuickNotification(title, message, executeCmd string) error {
 	return nil
 }
 
+// appNameSlug converts a display app name (e.g. "Claude Code", "Codex") into
+// a lowercase, hyphenated identifier safe to prefix onto the per-notification
+// unique AppName suffix on macOS/Linux.
+func appNameSlug(name string) string {
+	var b strings.Builder
+	lastDash := false
+	for _, r := range strings.ToLower(name) {
+		switch {
+		case r >= 'a' && r <= 'z' || r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastDash = false
+		case !lastDash:
+			b.WriteRune('-')
+			lastDash = true
+		}
+	}
+	slug := strings.Trim(b.String(), "-")
+	if slug == "" {
+		return "claude-notif"
+	}
+	return slug
+}
+
 // sendWithBeeep sends notification via beeep (cross-platform)
 func (n *Notifier) sendWithBeeep(title, message, appIcon, sound string) error {
 	// Platform-specific AppName handling:
@@ -494,11 +517,12 @@ func (n *Notifier) sendWithBeeep(title, message, appIcon, sound string) error {
 	//   See: https://github.com/777genius/claude-notifications-go/issues/4
 	// - macOS/Linux: Use unique AppName to prevent notification grouping/replacement,
 	//   allowing multiple notifications to be displayed simultaneously.
+	appName := n.cfg.GetDesktopAppName()
 	originalAppName := beeep.AppName
 	if isNotifierWindows() {
-		beeep.AppName = "Claude Code Notifications"
+		beeep.AppName = appName
 	} else {
-		beeep.AppName = fmt.Sprintf("claude-notif-%d", time.Now().UnixNano())
+		beeep.AppName = fmt.Sprintf("%s-%d", appNameSlug(appName), time.Now().UnixNano())
 	}
 	defer func() {
 		beeep.AppName = originalAppName

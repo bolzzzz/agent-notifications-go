@@ -1,0 +1,20 @@
+{
+  "name": "claude-notifications-go",
+  "interface": {
+    "displayName": "Claude Notifications Go"
+  },
+  "plugins": [
+    {
+      "name": "claude-notifications-go",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
