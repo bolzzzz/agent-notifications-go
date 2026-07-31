@@ -17,7 +17,7 @@ LIST_SOUNDS_PATH=bin/$(LIST_SOUNDS)
 # Production build: optimized for size and deployment
 GIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BO_VERSION_FLAGS=-ldflags="-X main.gitHash=$(GIT_HASH)"
-RELEASE_FLAGS=-ldflags="-s -w" -trimpath
+RELEASE_FLAGS=-ldflags="-s -w -X main.gitHash=$(GIT_HASH)" -trimpath
 
 # Build targets
 build: ## Build the binaries (development mode with debug symbols)

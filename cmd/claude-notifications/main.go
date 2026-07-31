@@ -19,7 +19,7 @@ import (
 	"github.com/777genius/claude-notifications/internal/winfocus"
 )
 
-const versionBase = "1.40.1-bo"
+const versionBase = "1.40.1"
 
 var gitHash string // injected via -ldflags "-X main.gitHash=..."
 
