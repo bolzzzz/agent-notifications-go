@@ -8,7 +8,6 @@ import (
 	"github.com/777genius/claude-notifications/internal/analyzer"
 	"github.com/777genius/claude-notifications/internal/config"
 	"github.com/777genius/claude-notifications/internal/logging"
-	"github.com/777genius/claude-notifications/internal/product"
 	"github.com/777genius/claude-notifications/internal/sessionname"
 )
 
@@ -38,7 +37,7 @@ func (f *SlackFormatter) Format(ctx SendContext, statusInfo config.StatusInfo) (
 				"color":       color,
 				"title":       statusInfo.Title,
 				"text":        ctx.Message,
-				"footer":      fmt.Sprintf("Session: %s | %s Notifications", ctx.SessionID, product.Name()),
+				"footer":      fmt.Sprintf("Session: %s | Claude Notifications", ctx.SessionID),
 				"footer_icon": "https://claude.ai/favicon.ico",
 				"ts":          time.Now().Unix(),
 				"mrkdwn_in":   []string{"text"},
@@ -80,7 +79,7 @@ func (f *DiscordFormatter) Format(ctx SendContext, statusInfo config.StatusInfo)
 	}
 
 	return map[string]interface{}{
-		"username": product.Name(),
+		"username": "Claude Code",
 		"embeds":   []map[string]interface{}{embed},
 	}, nil
 }
@@ -117,9 +116,9 @@ func buildDiscordAuthor(ctx SendContext) string {
 // label that already appears in the author line.
 func buildDiscordFooter(ctx SendContext) string {
 	if ctx.SessionID == "" {
-		return product.Name()
+		return "Claude Code"
 	}
-	return truncateMiddle(fmt.Sprintf("Session: %s · %s", ctx.SessionID, product.Name()), discordEmbedFooterLimit)
+	return truncateMiddle(fmt.Sprintf("Session: %s · Claude Code", ctx.SessionID), discordEmbedFooterLimit)
 }
 
 // truncateMiddle keeps both the start and end of a string visible while

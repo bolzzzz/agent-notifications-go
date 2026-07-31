@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/777genius/claude-notifications/internal/audio"
-	"github.com/777genius/claude-notifications/internal/product"
 	"github.com/777genius/claude-notifications/internal/sounds"
 )
 
@@ -148,9 +147,8 @@ func main() {
 }
 
 func getPluginRoot() string {
-	// Try the plugin-root env var for the invoking product first
-	// (CLAUDE_PLUGIN_ROOT for Claude Code, CODEBUDDY_PLUGIN_ROOT for CodeBuddy).
-	if root := product.PluginRoot(); root != "" {
+	// Try CLAUDE_PLUGIN_ROOT environment variable first
+	if root := os.Getenv("CLAUDE_PLUGIN_ROOT"); root != "" {
 		return root
 	}
 

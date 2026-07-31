@@ -8,7 +8,6 @@ import (
 
 	"github.com/777genius/claude-notifications/internal/logging"
 	"github.com/777genius/claude-notifications/internal/platform"
-	"github.com/777genius/claude-notifications/internal/product"
 )
 
 // Config represents the plugin configuration
@@ -144,12 +143,8 @@ const defaultSuppressQuestionAfterAnyNotificationSeconds = 7
 
 // DefaultConfig returns a config with sensible defaults
 func DefaultConfig() *Config {
-	// Get plugin root from environment, fallback to current directory.
-	// Honors both CLAUDE_PLUGIN_ROOT (Claude Code) and CODEBUDDY_PLUGIN_ROOT (CodeBuddy).
-	pluginRoot := product.PluginRoot()
-	if pluginRoot == "" {
-		pluginRoot = platform.ExpandEnv("${CLAUDE_PLUGIN_ROOT}")
-	}
+	// Get plugin root from environment, fallback to current directory
+	pluginRoot := platform.ExpandEnv("${CLAUDE_PLUGIN_ROOT}")
 	if pluginRoot == "" || pluginRoot == "${CLAUDE_PLUGIN_ROOT}" {
 		pluginRoot = "."
 	}
