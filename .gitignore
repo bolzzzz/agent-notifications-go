@@ -88,3 +88,5 @@ build/
 .augment/rules/byterover-rules.md
 
 .build/
+
+bin/claude-notifications-linux-amd64
