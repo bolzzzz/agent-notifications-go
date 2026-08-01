@@ -60,6 +60,14 @@ type HookData struct {
 	TurnID               string `json:"turn_id,omitempty"`
 	Model                string `json:"model,omitempty"`
 	LastAssistantMessage string `json:"last_assistant_message,omitempty"`
+	// OpenCode-specific fields, set by the .opencode/plugins/notifications.ts
+	// plugin (no transcript exists for opencode sessions):
+	//   Product  — explicit product marker ("opencode")
+	//   Message  — display text for question/notification events
+	//   ErrorType — session.error name (e.g. "APIError", "ProviderAuthError")
+	Product   string `json:"product,omitempty"`
+	Message   string `json:"message,omitempty"`
+	ErrorType string `json:"error_type,omitempty"`
 	// Team-related fields (present in TeammateIdle, TaskCreated, TaskCompleted hooks)
 	TeamName     string `json:"team_name,omitempty"`
 	TeammateName string `json:"teammate_name,omitempty"`
@@ -558,10 +566,18 @@ func skipUTF8BOM(input io.Reader) io.Reader {
 // Returns the parsed messages alongside the status so callers can reuse them
 // (e.g., for summary generation) without re-reading the transcript file.
 func (h *Handler) handleStopEvent(hookData *HookData) (analyzer.Status, []jsonl.Message, error) {
-	// Codex: the rollout transcript format is not a stable interface, and the
-	// hook payload already carries last_assistant_message, so classify directly
-	// from the payload instead of parsing the transcript.
-	if product.Detect(hookData.TurnID, hookData.Model) == product.Codex {
+	switch product.FromPayload(hookData.Product, hookData.TurnID, hookData.Model) {
+	case product.OpenCode:
+		// opencode: no transcript, no stable rollout format. The plugin sends
+		// last_assistant_message (Stop) and/or error_type (session.error), so
+		// classify directly from the payload.
+		status := opencodeStopStatus(hookData.ErrorType, hookData.LastAssistantMessage)
+		logging.Debug("Analyzed status (opencode): %s", status)
+		return status, nil, nil
+	case product.Codex:
+		// Codex: the rollout transcript format is not a stable interface, and the
+		// hook payload already carries last_assistant_message, so classify directly
+		// from the payload instead of parsing the transcript.
 		status := codexStopStatus(hookData.LastAssistantMessage)
 		logging.Debug("Analyzed status (codex): %s", status)
 		return status, nil, nil
@@ -601,12 +617,38 @@ func codexStopStatus(lastAssistantMessage string) analyzer.Status {
 	return analyzer.StatusTaskComplete
 }
 
+// opencodeStopStatus classifies an opencode Stop/SubagentStop event from the
+// plugin-supplied payload. A session.error carries error_type (the error name
+// from the event, e.g. "APIError" or "ProviderAuthError"); auth-related errors
+// map to StatusAPIError, everything else API-ish to StatusAPIErrorOverloaded
+// (mirroring the transcript-based detectAPIErrors). Without an error the last
+// assistant message is used, with the same trailing-question-mark heuristic
+// as Codex.
+func opencodeStopStatus(errorType, lastAssistantMessage string) analyzer.Status {
+	if errorType != "" {
+		if strings.Contains(strings.ToLower(errorType), "auth") {
+			return analyzer.StatusAPIError
+		}
+		return analyzer.StatusAPIErrorOverloaded
+	}
+	return codexStopStatus(lastAssistantMessage)
+}
+
 // generateMessage generates a notification body and action summary.
 // If messages are provided (from handleStopEvent), uses them directly to avoid re-reading the transcript.
 func (h *Handler) generateMessage(hookData *HookData, status analyzer.Status, messages []jsonl.Message) (body, actions string) {
-	// Codex: build the body from the payload's last_assistant_message instead
-	// of the transcript (see handleStopEvent).
-	if product.Detect(hookData.TurnID, hookData.Model) == product.Codex {
+	// Codex/opencode: build the body from the payload fields instead of the
+	// transcript (see handleStopEvent). opencode prefers the explicit Message
+	// field (question text, permission title), falling back to
+	// last_assistant_message for Stop events.
+	switch product.FromPayload(hookData.Product, hookData.TurnID, hookData.Model) {
+	case product.OpenCode:
+		body = summary.GenerateFromText(firstNonEmpty(hookData.Message, hookData.LastAssistantMessage), status, h.cfg)
+		if body == "" {
+			body = summary.GenerateSimple(status, h.cfg)
+		}
+		return body, ""
+	case product.Codex:
 		body = summary.GenerateFromText(hookData.LastAssistantMessage, status, h.cfg)
 		if body == "" {
 			body = summary.GenerateSimple(status, h.cfg)
@@ -637,6 +679,16 @@ func joinMessageParts(body, actions string) string {
 		return body
 	}
 	return body + " " + actions
+}
+
+// firstNonEmpty returns the first non-empty string in values.
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // sendNotifications sends desktop and webhook notifications and reports whether

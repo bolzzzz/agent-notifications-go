@@ -1,8 +1,10 @@
-// Package product identifies which AI CLI (Claude Code or Codex) is invoking
-// the hook. Both tools deliver hook events as JSON over stdin, but Codex adds
-// Codex-specific extension fields (turn_id, model) to every event payload and
-// exports PLUGIN_ROOT for plugin-bundled hooks, while Claude Code exports only
-// CLAUDE_PLUGIN_ROOT.
+// Package product identifies which AI CLI (Claude Code, Codex, or opencode)
+// is invoking the hook. Claude Code and Codex deliver hook events as JSON over
+// stdin, but opencode has no JSON-command hooks — its TS plugin forwards
+// events to this binary and carries an explicit "product": "opencode" field.
+// Codex adds Codex-specific extension fields (turn_id, model) to every event
+// payload and exports PLUGIN_ROOT for plugin-bundled hooks, while Claude Code
+// exports only CLAUDE_PLUGIN_ROOT.
 package product
 
 import "os"
@@ -12,6 +14,8 @@ const (
 	Claude = "claude"
 	// Codex is OpenAI's Codex CLI.
 	Codex = "codex"
+	// OpenCode is the opencode CLI (plugin forwards events to handle-hook).
+	OpenCode = "opencode"
 )
 
 // Detect returns the product currently invoking the hook.
@@ -32,4 +36,15 @@ func Detect(turnID, model string) string {
 		return Codex
 	}
 	return Claude
+}
+
+// FromPayload returns the product for a hook payload, honoring an explicit
+// product field (set by the opencode plugin, which controls the entire JSON
+// payload) before falling back to the Codex/Claude Code heuristic signals.
+func FromPayload(product, turnID, model string) string {
+	switch product {
+	case OpenCode, Codex:
+		return product
+	}
+	return Detect(turnID, model)
 }

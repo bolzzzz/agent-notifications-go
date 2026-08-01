@@ -422,6 +422,13 @@ func powershellSingleQuoted(value string) string {
 }
 
 func getPluginRoot() string {
+	// Explicit override set by the opencode plugin (.opencode/plugins/), which
+	// knows where the plugin checkout lives even when it runs from a global
+	// opencode plugins directory.
+	if root := os.Getenv("CLAUDE_NOTIFICATIONS_PLUGIN_ROOT"); root != "" {
+		return root
+	}
+
 	// Try CLAUDE_PLUGIN_ROOT environment variable first
 	if root := os.Getenv("CLAUDE_PLUGIN_ROOT"); root != "" {
 		return root
@@ -592,5 +599,6 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAUDE_PLUGIN_ROOT  Plugin root directory (auto-detected if not set)")
+	fmt.Println("  CLAUDE_NOTIFICATIONS_PLUGIN_ROOT  Plugin root override (set by the opencode plugin)")
 	fmt.Println()
 }

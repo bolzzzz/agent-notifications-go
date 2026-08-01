@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **opencode support** - `.opencode/plugins/notifications.ts` forwards opencode events to the same binary: `session.idle` → `Stop`/`SubagentStop` (child sessions), `question.asked` and `permission.updated` → `Notification`, `session.error` (`APIError`/`ProviderAuthError`) → `Stop` with an `error_type` classified as `api_error`. The payload's explicit `product: "opencode"` field drives detection (`product.FromPayload`), the plugin root can be overridden via `CLAUDE_NOTIFICATIONS_PLUGIN_ROOT`, and the plugin locates the binary via `CLAUDE_NOTIFICATIONS_BIN`, `CLAUDE_PLUGIN_ROOT`, the plugin checkout's `bin/`, or PATH.
 - **Codex CLI support** - the plugin now doubles as a Codex plugin: `.codex-plugin/plugin.json` and `hooks/hooks-codex.json` wire Codex `Stop`, `SubagentStop`, `PermissionRequest`, and `request_user_input` PreToolUse events into the same notification pipeline (`.agents/plugins/marketplace.json` allows `codex plugin marketplace add`). Codex events are detected via the payload's `turn_id`/`model` extension fields and classified from `last_assistant_message` instead of parsing the rollout transcript; a trailing `?` is treated as a question. Configuration is additionally read from `~/.codex/claude-notifications-go/config.json`, and the plugin root falls back to Codex's `PLUGIN_ROOT` environment variable.
 
 ## [1.40.1] - 2026-07-17

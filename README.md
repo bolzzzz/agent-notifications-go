@@ -50,7 +50,7 @@ Commit: `bf18a50`
 </table>
 </div>
 
-Smart notifications for Claude Code and Codex with click-to-focus, git branch display, and webhook integrations.
+Smart notifications for Claude Code, Codex and opencode with click-to-focus, git branch display, and webhook integrations.
 
 > **Boost your productivity** — check out the [advanced task manager for Claude with a convenient UI](https://github.com/777genius/claude_agent_teams_ui), from the creator of this plugin.
 
@@ -62,6 +62,7 @@ Smart notifications for Claude Code and Codex with click-to-focus, git branch di
     - [Quick Install (Recommended)](#quick-install-recommended)
     - [Manual Install](#manual-install)
     - [Codex Install](#codex-install)
+    - [opencode Install](#opencode-install)
     - [Updating](#updating)
   - [Supported Notification Types](#supported-notification-types)
   - [Platform Support](#platform-support)
@@ -155,6 +156,35 @@ Codex notifications fire on:
 - **SubagentStop** — a subagent finishes (same `notifyOnSubagentStop` opt-in as Claude Code)
 
 Configuration is shared with the Claude Code setup: `~/.claude/claude-notifications-go/config.json` is read first, then `~/.codex/claude-notifications-go/config.json`. The Codex plugin manifest lives in `.codex-plugin/plugin.json` and points at `hooks/hooks-codex.json` (the Claude Code hook definitions in `hooks/hooks.json` are unchanged).
+
+### opencode Install
+
+opencode has no JSON-command hooks, so a TypeScript plugin (`.opencode/plugins/notifications.ts`) forwards opencode events to the same binary. Install the binary first (the [Quick Install](#quick-install-recommended) above works — it downloads the binary regardless of which CLI you use), then load the plugin:
+
+```bash
+# 1) Install the binary (same as the Claude Code install above)
+curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | bash
+
+# 2) Copy the plugin into opencode's global plugins directory
+mkdir -p ~/.config/opencode/plugins
+cp <path-to-repo>/.opencode/plugins/notifications.ts ~/.config/opencode/plugins/
+```
+
+If the plugin binary isn't found via `CLAUDE_PLUGIN_ROOT` or the repo checkout layout, tell the plugin where it lives:
+
+```bash
+export CLAUDE_NOTIFICATIONS_BIN="$HOME/.claude/plugins/marketplaces/.../bin/claude-notifications"
+```
+
+Then restart opencode. Notifications fire on:
+
+- **session.idle** — a turn completes (a trailing `?` in the final assistant message is classified as a question)
+- **question.asked** — opencode's `question` tool is waiting for your answer
+- **permission.updated** — an approval prompt is waiting
+- **session.error** — API/auth errors (`APIError`, `ProviderAuthError`)
+- **SubagentStop** — child sessions (subagents) finish, honoring the same `notifyOnSubagentStop`/`suppressForSubagents` config as Claude Code
+
+Click-to-focus, sounds, and webhooks work the same as the other CLIs since all delivery happens in the shared binary. Configuration is shared: `~/.claude/claude-notifications-go/config.json`.
 
 ### Updating
 
