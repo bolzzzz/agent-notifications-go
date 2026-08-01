@@ -134,11 +134,16 @@ function eventProperties(event: { type: string; properties?: EventProperties }):
 
 // lastAssistantText fetches the session's last assistant message and returns
 // its text content ("" when the session never produced an assistant message).
+type AssistantMessage = { info: { role: string }; parts: Array<{ type: string; text?: string }> }
+
 async function lastAssistantText(
-  client: { session: { messages: (opts: unknown) => Promise<{ info: { role: string }; parts: Array<{ type: string; text?: string }> }[]> } },
+  client: { session: { messages: (opts: unknown) => Promise<AssistantMessage[] | { data?: AssistantMessage[] }> } },
   sessionID: string,
 ): Promise<string> {
-  const messages = await client.session.messages({ path: { id: sessionID } })
+  const result = await client.session.messages({ path: { id: sessionID } })
+  // The SDK (hey-api client) resolves to a { data, error, ... } envelope;
+  // tolerate a bare array too in case a future client unwraps it.
+  const messages = Array.isArray(result) ? result : (result?.data ?? [])
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i]
     if (!message || message.info?.role !== "assistant") continue
@@ -154,11 +159,12 @@ async function lastAssistantText(
 }
 
 async function isChildSession(
-  client: { session: { get: (opts: unknown) => Promise<{ parentID?: string } | undefined> } },
+  client: { session: { get: (opts: unknown) => Promise<{ parentID?: string } | { data?: { parentID?: string } } | undefined> } },
   sessionID: string,
 ): Promise<boolean> {
   try {
-    const info = await client.session.get({ path: { id: sessionID } })
+    const result = await client.session.get({ path: { id: sessionID } })
+    const info = result && "data" in (result as object) ? (result as { data?: { parentID?: string } }).data : (result as { parentID?: string } | undefined)
     return Boolean(info?.parentID)
   } catch {
     return false
@@ -169,6 +175,37 @@ export const Notifications: Plugin = async ({ client, directory }) => {
   const cwd = directory || process.cwd()
   let warnedMissingBinary = false
 
+  const log = (level: "info" | "warn" | "debug", message: string, extra?: Record<string, unknown>) => {
+    if (level === "debug" && process.env.CLAUDE_NOTIFICATIONS_DEBUG !== "1") return
+    client.app
+      .log({ body: { service: "claude-notifications-go", level, message, ...(extra ? { extra } : {}) } })
+      .catch(() => {})
+  }
+
+  const resolved = resolveBinary()
+  log("info", "opencode plugin initialized", {
+    directory: cwd,
+    binary: resolved.bin,
+    binaryFound: resolved.found,
+    pluginRoot: resolved.pluginRoot,
+  })
+
+  let firstEventLogged = false
+  const seenEventTypes = new Set<string>()
+
+  const handleIdle = async (sessionID: string, source: string) => {
+    if (!sessionID) return
+    const text = await lastAssistantText(client, sessionID)
+    if (!text) {
+      log("info", "session.idle skipped: no assistant text", { sessionID, source })
+      return // nothing was produced (empty session, shell, cancel)
+    }
+    const isChild = await isChildSession(client, sessionID)
+    const hookEvent = isChild ? "SubagentStop" : "Stop"
+    log("info", "session.idle fired", { sessionID, source, isChild, textLength: text.length })
+    await fire(hookEvent, { session_id: sessionID, last_assistant_message: text })
+  }
+
   const fire = async (hookEvent: string, payload: Partial<HookPayload>): Promise<void> => {
     try {
       runHook(hookEvent, { cwd, product: PRODUCT, ...payload } as HookPayload, () => {
@@ -176,15 +213,7 @@ export const Notifications: Plugin = async ({ client, directory }) => {
         warnedMissingBinary = true
         // One-time warning; the binary is usually at CLAUDE_PLUGIN_ROOT/bin
         // or CLAUDE_NOTIFICATIONS_BIN.
-        client.app
-          .log({
-            body: {
-              service: "claude-notifications-go",
-              level: "warn",
-              message: "claude-notifications binary not found. Set CLAUDE_NOTIFICATIONS_BIN or CLAUDE_PLUGIN_ROOT.",
-            },
-          })
-          .catch(() => {})
+        log("warn", "claude-notifications binary not found. Set CLAUDE_NOTIFICATIONS_BIN or CLAUDE_PLUGIN_ROOT.")
       })
     } catch {
       // Never let notification failures break the opencode session.
@@ -196,41 +225,62 @@ export const Notifications: Plugin = async ({ client, directory }) => {
       const properties = eventProperties(event)
       const sessionID = typeof properties.sessionID === "string" ? properties.sessionID : ""
 
-      switch (event.type) {
-        case "session.idle": {
-          if (!sessionID) return
-          const text = await lastAssistantText(client, sessionID)
-          if (!text) return // nothing was produced (empty session, shell, cancel)
-          const hookEvent = (await isChildSession(client, sessionID)) ? "SubagentStop" : "Stop"
-          await fire(hookEvent, { session_id: sessionID, last_assistant_message: text })
-          return
-        }
+      if (!firstEventLogged) {
+        firstEventLogged = true
+        log("info", "opencode plugin receiving events", { firstEventType: event.type })
+      }
+      if (!seenEventTypes.has(event.type)) {
+        seenEventTypes.add(event.type)
+        log("info", "event type seen", { type: event.type })
+      }
 
-        case "question.asked": {
-          // opencode's `question` tool (AskUserQuestion equivalent).
-          if (!sessionID) return
-          const questions = Array.isArray(properties.questions) ? (properties.questions as Array<{ question?: string }>) : []
-          const questionText = questions.map((q) => q?.question).find((q) => typeof q === "string" && q.trim() !== "")
-          await fire("Notification", { session_id: sessionID, message: questionText })
-          return
-        }
+      try {
+        switch (event.type) {
+          case "session.idle": {
+            await handleIdle(sessionID, "session.idle")
+            return
+          }
 
-        case "permission.updated": {
-          // Approval prompt waiting for the user.
-          if (!sessionID) return
-          const title = typeof properties.title === "string" ? properties.title : ""
-          await fire("Notification", { session_id: sessionID, message: title })
-          return
-        }
+          case "session.status": {
+            // Fallback: some opencode versions deliver idle via session.status.
+            const status = properties.status as { type?: string } | undefined
+            if (status?.type === "idle") {
+              await handleIdle(sessionID, "session.status:idle")
+            }
+            return
+          }
 
-        case "session.error": {
-          if (!sessionID) return
-          const error = properties.error as { name?: unknown } | undefined
-          const name = typeof error?.name === "string" ? error.name : ""
-          if (!NOTIFY_ERROR_NAMES.has(name)) return
-          await fire("Stop", { session_id: sessionID, error_type: name })
-          return
+          case "question.asked": {
+            // opencode's `question` tool (AskUserQuestion equivalent).
+            if (!sessionID) return
+            const questions = Array.isArray(properties.questions) ? (properties.questions as Array<{ question?: string }>) : []
+            const questionText = questions.map((q) => q?.question).find((q) => typeof q === "string" && q.trim() !== "")
+            log("info", "question.asked fired", { sessionID })
+            await fire("Notification", { session_id: sessionID, message: questionText })
+            return
+          }
+
+          case "permission.updated": {
+            // Approval prompt waiting for the user.
+            if (!sessionID) return
+            const title = typeof properties.title === "string" ? properties.title : ""
+            log("info", "permission.updated fired", { sessionID })
+            await fire("Notification", { session_id: sessionID, message: title })
+            return
+          }
+
+          case "session.error": {
+            if (!sessionID) return
+            const error = properties.error as { name?: unknown } | undefined
+            const name = typeof error?.name === "string" ? error.name : ""
+            if (!NOTIFY_ERROR_NAMES.has(name)) return
+            log("info", "session.error fired", { sessionID, errorName: name })
+            await fire("Stop", { session_id: sessionID, error_type: name })
+            return
+          }
         }
+      } catch (err) {
+        log("warn", "event handler error", { eventType: event.type, error: String(err) })
       }
     },
   }
