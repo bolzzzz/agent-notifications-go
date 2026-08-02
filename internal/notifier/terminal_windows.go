@@ -18,7 +18,7 @@ import (
 
 // windowsToastAppID is the AppID shown in Action Center. Kept fixed (matching
 // the beeep path) to avoid registry pollution — see issue #4.
-const windowsToastAppID = "Claude Code Notifications"
+const windowsToastAppID = "Agent Notifications"
 
 // --- macOS-only helpers: stubs so the notifier package compiles on Windows ---
 

@@ -620,7 +620,7 @@ func (c *Config) IsDesktopEnabled() bool {
 // across products/platforms: Windows needs a stable name to avoid leaving
 // stale registry entries, and GNOME/Wayland's notification identity is
 // pinned to a single installed desktop entry regardless of AppName anyway.
-const defaultDesktopAppName = "codex-claude-notifications"
+const defaultDesktopAppName = "agent-notifications"
 
 // GetDesktopAppName returns the app name shown by the desktop environment for
 // notifications. Set desktop.appName in the config to override.
