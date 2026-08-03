@@ -10,8 +10,8 @@ import (
 
 // ProtocolScheme is the custom URI scheme registered under HKCU. Clicking a
 // Windows toast with protocol activation relaunches the binary's focus-windows
-// subcommand with a "claude-notify-focus:<payload>" argument.
-const ProtocolScheme = "claude-notify-focus"
+// subcommand with a "agent-notify-focus:<payload>" argument.
+const ProtocolScheme = "agent-notify-focus"
 
 // FocusContext captures everything needed to re-find and raise the terminal
 // window that triggered a notification. It is encoded into the toast's
@@ -29,7 +29,7 @@ func (c FocusContext) HasTarget() bool {
 	return c.HWND != 0 || c.PID != 0 || c.Title != "" || c.Folder != ""
 }
 
-// EncodeURI renders the context as "claude-notify-focus:<base64url-json>".
+// EncodeURI renders the context as "agent-notify-focus:<base64url-json>".
 // RawURLEncoding keeps the payload free of '/', '+' and '=' so it survives both
 // the URI and the registry "%1" command-line substitution unescaped.
 func (c FocusContext) EncodeURI() string {

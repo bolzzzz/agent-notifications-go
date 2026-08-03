@@ -99,9 +99,9 @@ get_binary_name() {
     local platform=$(get_platform)
     local arch=$(get_arch)
     if [ "$platform" = "windows" ]; then
-        echo "claude-notifications-${platform}-${arch}.exe"
+        echo "agent-notifications-${platform}-${arch}.exe"
     else
-        echo "claude-notifications-${platform}-${arch}"
+        echo "agent-notifications-${platform}-${arch}"
     fi
 }
 
@@ -158,13 +158,13 @@ start_mock_server() {
     if [ ! -f "$FIXTURES_DIR/mock_binary" ]; then
         cat > "$FIXTURES_DIR/mock_binary" << 'MOCK_EOF'
 #!/bin/bash
-# Mock claude-notifications binary for testing
+# Mock agent-notifications binary for testing
 if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
-    echo "claude-notifications version 1.0.0-mock (test binary)"
+    echo "agent-notifications version 1.0.0-mock (test binary)"
     exit 0
 fi
 if [ "$1" = "help" ] || [ "$1" = "--help" ]; then
-    echo "claude-notifications mock binary"
+    echo "agent-notifications mock binary"
     exit 0
 fi
 echo "Mock binary executed with args: $@"
@@ -423,7 +423,7 @@ test_binary_name_format() {
     output=$(INSTALL_TARGET_DIR="$TEST_DIR" run_with_timeout 5 bash "$INSTALL_SCRIPT" 2>&1 || true)
 
     # Binary name should contain platform and arch
-    assert_contains "$output" "Binary:.*claude-notifications-" "Binary name has correct prefix"
+    assert_contains "$output" "Binary:.*agent-notifications-" "Binary name has correct prefix"
 
     cleanup_test_dir
 }
@@ -678,7 +678,7 @@ test_force_removes_symlinks() {
 
     # Create fake symlinks
     touch "$TEST_DIR/target_binary"
-    ln -sf target_binary "$TEST_DIR/claude-notifications" 2>/dev/null || true
+    ln -sf target_binary "$TEST_DIR/agent-notifications" 2>/dev/null || true
     ln -sf target_binary "$TEST_DIR/sound-preview" 2>/dev/null || true
 
     # Run with --force and unreachable URL
@@ -689,7 +689,7 @@ test_force_removes_symlinks() {
     run_with_timeout 5 bash "$INSTALL_SCRIPT" --force 2>&1 || true
 
     # Symlinks should be removed
-    if [ -L "$TEST_DIR/claude-notifications" ]; then
+    if [ -L "$TEST_DIR/agent-notifications" ]; then
         echo -e "  ${RED}✗${NC} Symlink not removed"
         TESTS_FAILED=$((TESTS_FAILED + 1))
     else
@@ -723,10 +723,10 @@ esac
 UNAME_EOF
     chmod +x "$fake_path/uname"
 
-    cat > "$bin_dir/claude-notifications-windows-amd64.exe" <<'FAKE_EXE_EOF'
+    cat > "$bin_dir/agent-notifications-windows-amd64.exe" <<'FAKE_EXE_EOF'
 #!/bin/sh
 if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
-    echo "claude-notifications v1.38.0"
+    echo "agent-notifications v1.38.0"
     exit 0
 fi
 if [ "$1" = "windows-hooks" ]; then
@@ -743,7 +743,7 @@ if [ "$1" = "windows-hooks" ]; then
 fi
 exit 0
 FAKE_EXE_EOF
-    chmod +x "$bin_dir/claude-notifications-windows-amd64.exe"
+    chmod +x "$bin_dir/agent-notifications-windows-amd64.exe"
 
     touch "$bin_dir/sound-preview-windows-amd64.exe"
     touch "$bin_dir/list-devices-windows-amd64.exe"
@@ -766,7 +766,7 @@ FAKE_EXE_EOF
     assert_not_contains "$hooks_json" '\.bat|\.cmd' "hooks.json does not use Windows shell shims"
     assert_contains "$hooks_json" '"handle-hook"' "hooks.json calls hook handler"
     assert_contains "$hooks_json" '"Stop"' "hooks.json passes Stop event"
-    assert_contains "$hooks_json" 'claude-notifications-windows-amd64\.exe' "hooks.json points at Windows exe"
+    assert_contains "$hooks_json" 'agent-notifications-windows-amd64\.exe' "hooks.json points at Windows exe"
 
     cleanup_test_dir
 }
@@ -793,28 +793,28 @@ esac
 UNAME_EOF
     chmod +x "$fake_path/uname"
 
-    cat > "$bin_dir/claude-notifications-windows-amd64.exe" <<'OLD_EXE_EOF'
+    cat > "$bin_dir/agent-notifications-windows-amd64.exe" <<'OLD_EXE_EOF'
 #!/bin/sh
 if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
-    echo "claude-notifications v1.37.0"
+    echo "agent-notifications v1.37.0"
     exit 0
 fi
 echo "unknown command: $1" >&2
 exit 1
 OLD_EXE_EOF
-    chmod +x "$bin_dir/claude-notifications-windows-amd64.exe"
+    chmod +x "$bin_dir/agent-notifications-windows-amd64.exe"
 
     local output exit_code
     set +e
     output=$(INSTALL_TARGET_DIR="$bin_dir" PATH="$fake_path:$PATH" SKIP_CONNECTIVITY_CHECK=true \
-        RELEASE_URL="file:///no-such-claude-notifications-release" CHECKSUMS_URL="file:///no-such-claude-notifications-release/checksums.txt" \
+        RELEASE_URL="file:///no-such-agent-notifications-release" CHECKSUMS_URL="file:///no-such-agent-notifications-release/checksums.txt" \
         run_with_timeout 15 bash "$INSTALL_SCRIPT" 2>&1)
     exit_code=$?
     set +e
 
     assert_exit_code 1 $exit_code "Old Windows binary does not complete setup silently"
     assert_contains "$output" "cannot generate exec-form hooks" "Installer detects old binary without exec-form windows-hooks"
-    assert_contains "$output" "Updating claude-notifications-windows-amd64.exe before rewriting hooks" "Installer chooses update path"
+    assert_contains "$output" "Updating agent-notifications-windows-amd64.exe before rewriting hooks" "Installer chooses update path"
     assert_not_contains "$output" "Setup complete" "Installer does not report success with stale hooks"
 
     cleanup_test_dir
@@ -842,10 +842,10 @@ esac
 UNAME_EOF
     chmod +x "$fake_path/uname"
 
-    cat > "$bin_dir/claude-notifications-windows-amd64.exe" <<'WRAPPER_EXE_EOF'
+    cat > "$bin_dir/agent-notifications-windows-amd64.exe" <<'WRAPPER_EXE_EOF'
 #!/bin/sh
 if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
-    echo "claude-notifications v1.38.0"
+    echo "agent-notifications v1.38.0"
     exit 0
 fi
 if [ "$1" = "windows-hooks" ]; then
@@ -854,19 +854,19 @@ if [ "$1" = "windows-hooks" ]; then
 fi
 exit 0
 WRAPPER_EXE_EOF
-    chmod +x "$bin_dir/claude-notifications-windows-amd64.exe"
+    chmod +x "$bin_dir/agent-notifications-windows-amd64.exe"
 
     local output exit_code
     set +e
     output=$(INSTALL_TARGET_DIR="$bin_dir" PATH="$fake_path:$PATH" SKIP_CONNECTIVITY_CHECK=true \
-        RELEASE_URL="file:///no-such-claude-notifications-release" CHECKSUMS_URL="file:///no-such-claude-notifications-release/checksums.txt" \
+        RELEASE_URL="file:///no-such-agent-notifications-release" CHECKSUMS_URL="file:///no-such-agent-notifications-release/checksums.txt" \
         run_with_timeout 15 bash "$INSTALL_SCRIPT" 2>&1)
     exit_code=$?
     set +e
 
     assert_exit_code 1 $exit_code "Wrapper exec-form Windows hooks do not complete setup silently"
     assert_contains "$output" "cannot generate exec-form hooks" "Installer rejects wrapper-based exec-form hooks"
-    assert_contains "$output" "Updating claude-notifications-windows-amd64.exe before rewriting hooks" "Installer updates before writing direct exe hooks"
+    assert_contains "$output" "Updating agent-notifications-windows-amd64.exe before rewriting hooks" "Installer updates before writing direct exe hooks"
     assert_not_contains "$output" "Setup complete" "Installer does not report success with wrapper hooks"
 
     cleanup_test_dir
@@ -894,10 +894,10 @@ esac
 UNAME_EOF
     chmod +x "$fake_path/uname"
 
-    cat > "$bin_dir/claude-notifications-windows-amd64.exe" <<'SH_EXE_EOF'
+    cat > "$bin_dir/agent-notifications-windows-amd64.exe" <<'SH_EXE_EOF'
 #!/bin/sh
 if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
-    echo "claude-notifications v1.38.0"
+    echo "agent-notifications v1.38.0"
     exit 0
 fi
 if [ "$1" = "windows-hooks" ]; then
@@ -906,19 +906,19 @@ if [ "$1" = "windows-hooks" ]; then
 fi
 exit 0
 SH_EXE_EOF
-    chmod +x "$bin_dir/claude-notifications-windows-amd64.exe"
+    chmod +x "$bin_dir/agent-notifications-windows-amd64.exe"
 
     local output exit_code
     set +e
     output=$(INSTALL_TARGET_DIR="$bin_dir" PATH="$fake_path:$PATH" SKIP_CONNECTIVITY_CHECK=true \
-        RELEASE_URL="file:///no-such-claude-notifications-release" CHECKSUMS_URL="file:///no-such-claude-notifications-release/checksums.txt" \
+        RELEASE_URL="file:///no-such-agent-notifications-release" CHECKSUMS_URL="file:///no-such-agent-notifications-release/checksums.txt" \
         run_with_timeout 15 bash "$INSTALL_SCRIPT" 2>&1)
     exit_code=$?
     set +e
 
     assert_exit_code 1 $exit_code "sh-mediated Windows hooks do not complete setup silently"
     assert_contains "$output" "cannot generate exec-form hooks" "Installer rejects sh-mediated Windows hooks"
-    assert_contains "$output" "Updating claude-notifications-windows-amd64.exe before rewriting hooks" "Installer updates before writing direct exe hooks"
+    assert_contains "$output" "Updating agent-notifications-windows-amd64.exe before rewriting hooks" "Installer updates before writing direct exe hooks"
     assert_not_contains "$output" "Setup complete" "Installer does not report success with sh-mediated hooks"
 
     cleanup_test_dir
@@ -945,8 +945,8 @@ test_windows_native_hooks_real_exec_launch() {
     mkdir -p "$bin_dir" "$hooks_dir"
     printf '{"hooks":{}}\n' > "$hooks_dir/hooks.json"
 
-    local exe_path="$bin_dir/claude-notifications-windows-amd64.exe"
-    if ! (cd "$REPO_ROOT" && go build -o "$exe_path" ./cmd/claude-notifications); then
+    local exe_path="$bin_dir/agent-notifications-windows-amd64.exe"
+    if ! (cd "$REPO_ROOT" && go build -o "$exe_path" ./cmd/agent-notifications); then
         fail_test "Build real Windows notification binary" "go build failed"
         cleanup_test_dir
         return
@@ -1015,8 +1015,8 @@ test_windows_real_hook_schedules_lazy_update() {
     printf '{"version":"9.99.0"}\n' > "$manifest_dir/plugin.json"
     cp "$INSTALL_SCRIPT" "$bin_dir/install.sh"
 
-    local exe_path="$bin_dir/claude-notifications-windows-amd64.exe"
-    if ! (cd "$REPO_ROOT" && go build -o "$exe_path" ./cmd/claude-notifications); then
+    local exe_path="$bin_dir/agent-notifications-windows-amd64.exe"
+    if ! (cd "$REPO_ROOT" && go build -o "$exe_path" ./cmd/agent-notifications); then
         fail_test "Build real Windows notification binary for lazy update" "go build failed"
         cleanup_test_dir
         return
@@ -1059,7 +1059,7 @@ FAKE_BASH_GO_EOF
     local output exit_code
     set +e
     output=$(printf '{"session_id":"ci-win","transcript_path":"","cwd":""}\n' | \
-        env CLAUDE_NOTIFICATIONS_BASH="$fake_bash_for_windows" \
+        env AGENT_NOTIFICATIONS_BASH="$fake_bash_for_windows" \
             FAKE_BASH_LOG="$fake_bash_log_for_windows" \
             CLAUDE_HOOK_JUDGE_MODE=true \
             "$exe_path" handle-hook Stop 2>&1)
@@ -1101,7 +1101,7 @@ test_force_removes_apps_macos() {
 
     # Create fake .app directories
     mkdir -p "$TEST_DIR/terminal-notifier.app/Contents"
-    mkdir -p "$TEST_DIR/ClaudeNotifications.app/Contents"
+    mkdir -p "$TEST_DIR/AgentNotifications.app/Contents"
 
     # Run with --force and unreachable URL
     # SKIP_CONNECTIVITY_CHECK bypasses the curl to github.com (flaky on CI)
@@ -1112,7 +1112,7 @@ test_force_removes_apps_macos() {
 
     # Apps should be removed
     assert_dir_not_exists "$TEST_DIR/terminal-notifier.app" "terminal-notifier.app removed"
-    assert_dir_not_exists "$TEST_DIR/ClaudeNotifications.app" "ClaudeNotifications.app removed"
+    assert_dir_not_exists "$TEST_DIR/AgentNotifications.app" "AgentNotifications.app removed"
 
     cleanup_test_dir
 }
@@ -1159,9 +1159,9 @@ test_mock_download_success() {
     assert_file_exists "$TEST_DIR/$binary_name" "Binary downloaded"
     # On Windows, wrapper is .bat file; on Unix it's a symlink
     if is_windows; then
-        assert_file_exists "$TEST_DIR/claude-notifications.bat" "Wrapper created"
+        assert_file_exists "$TEST_DIR/agent-notifications.bat" "Wrapper created"
     else
-        assert_file_exists "$TEST_DIR/claude-notifications" "Symlink created"
+        assert_file_exists "$TEST_DIR/agent-notifications" "Symlink created"
     fi
 
     # Cleanup mock files
@@ -1522,9 +1522,9 @@ test_real_full_install() {
     assert_exit_code 0 $exit_code "Install completed successfully"
     # On Windows, wrapper is .bat file; on Unix it's a symlink
     if is_windows; then
-        assert_file_exists "$TEST_DIR/claude-notifications.bat" "Wrapper created"
+        assert_file_exists "$TEST_DIR/agent-notifications.bat" "Wrapper created"
     else
-        assert_file_exists "$TEST_DIR/claude-notifications" "Symlink created"
+        assert_file_exists "$TEST_DIR/agent-notifications" "Symlink created"
     fi
 
     cleanup_test_dir
@@ -1555,14 +1555,14 @@ test_real_binary_runs() {
     # Determine correct binary/wrapper path
     local binary_path
     if is_windows; then
-        binary_path="$TEST_DIR/claude-notifications.bat"
+        binary_path="$TEST_DIR/agent-notifications.bat"
     else
-        binary_path="$TEST_DIR/claude-notifications"
+        binary_path="$TEST_DIR/agent-notifications"
     fi
 
     if [ -f "$binary_path" ]; then
         version_output=$("$binary_path" --version 2>&1 || true)
-        assert_contains "$version_output" "claude-notifications" "Binary outputs version"
+        assert_contains "$version_output" "agent-notifications" "Binary outputs version"
     else
         echo -e "  ${RED}✗${NC} Binary not found or not executable"
         TESTS_FAILED=$((TESTS_FAILED + 1))
@@ -1635,9 +1635,9 @@ test_real_terminal_notifier_macos() {
 
     INSTALL_TARGET_DIR="$TEST_DIR" run_with_timeout 120 bash "$INSTALL_SCRIPT" 2>&1 || true
 
-    # ClaudeNotifier.app is the modern notifier (preferred over legacy terminal-notifier.app)
-    assert_dir_exists "$TEST_DIR/ClaudeNotifier.app" "ClaudeNotifier.app installed"
-    assert_executable "$TEST_DIR/ClaudeNotifier.app/Contents/MacOS/terminal-notifier-modern" "terminal-notifier-modern executable"
+    # AgentNotifier.app is the modern notifier (preferred over legacy terminal-notifier.app)
+    assert_dir_exists "$TEST_DIR/AgentNotifier.app" "AgentNotifier.app installed"
+    assert_executable "$TEST_DIR/AgentNotifier.app/Contents/MacOS/terminal-notifier-modern" "terminal-notifier-modern executable"
 
     cleanup_test_dir
 }
@@ -1756,7 +1756,7 @@ test_hook_wrapper_passes_all_arguments() {
     setup_test_dir
 
     # Create a mock binary that echoes arguments
-    # On Windows, create shell script and point CLAUDE_NOTIFICATIONS_BIN to it
+    # On Windows, create shell script and point AGENT_NOTIFICATIONS_BIN to it
     # (avoids .bat/cmd.exe issues in the test harness)
     if is_windows; then
         cat > "$TEST_DIR/mock-binary.sh" << 'MOCK_EOF'
@@ -1764,13 +1764,13 @@ test_hook_wrapper_passes_all_arguments() {
 echo "ARGS:$*"
 MOCK_EOF
         chmod +x "$TEST_DIR/mock-binary.sh"
-        MOCK_ENV="CLAUDE_NOTIFICATIONS_BIN=$TEST_DIR/mock-binary.sh"
+        MOCK_ENV="AGENT_NOTIFICATIONS_BIN=$TEST_DIR/mock-binary.sh"
     else
-        cat > "$TEST_DIR/claude-notifications" << 'MOCK_EOF'
+        cat > "$TEST_DIR/agent-notifications" << 'MOCK_EOF'
 #!/bin/sh
 echo "ARGS:$*"
 MOCK_EOF
-        chmod +x "$TEST_DIR/claude-notifications"
+        chmod +x "$TEST_DIR/agent-notifications"
         MOCK_ENV=""
     fi
 
@@ -1845,13 +1845,13 @@ test_hook_wrapper_version_mismatch_triggers_update() {
     # Create mock binary that reports old version
     cat > "$ROOT_DIR/bin/mock-binary.sh" << 'MOCK_EOF'
 #!/bin/sh
-if [ "$1" = "version" ]; then echo "claude-notifications version 1.0.0"; fi
+if [ "$1" = "version" ]; then echo "agent-notifications version 1.0.0"; fi
 MOCK_EOF
     chmod +x "$ROOT_DIR/bin/mock-binary.sh"
 
     if ! is_windows; then
-        cp "$ROOT_DIR/bin/mock-binary.sh" "$ROOT_DIR/bin/claude-notifications"
-        chmod +x "$ROOT_DIR/bin/claude-notifications"
+        cp "$ROOT_DIR/bin/mock-binary.sh" "$ROOT_DIR/bin/agent-notifications"
+        chmod +x "$ROOT_DIR/bin/agent-notifications"
     fi
 
     # Create plugin.json with newer version (at root level, not in bin/)
@@ -1868,10 +1868,10 @@ touch "$INSTALL_TARGET_DIR/.update-triggered"
 INSTALL_EOF
     chmod +x "$ROOT_DIR/bin/install.sh"
 
-    # Run wrapper (on Windows, use CLAUDE_NOTIFICATIONS_BIN to bypass .bat detection)
+    # Run wrapper (on Windows, use AGENT_NOTIFICATIONS_BIN to bypass .bat detection)
     local run_env=""
     if is_windows; then
-        run_env="CLAUDE_NOTIFICATIONS_BIN=$ROOT_DIR/bin/mock-binary.sh"
+        run_env="AGENT_NOTIFICATIONS_BIN=$ROOT_DIR/bin/mock-binary.sh"
     fi
     echo '{}' | env $run_env sh "$ROOT_DIR/bin/hook-wrapper.sh" handle-hook Stop >/dev/null 2>&1 || true
 
@@ -1896,15 +1896,15 @@ test_hook_wrapper_version_match_no_update() {
     # Create mock binary that reports matching version
     cat > "$ROOT_DIR/bin/mock-binary.sh" << 'MOCK_EOF'
 #!/bin/sh
-if [ "$1" = "version" ]; then echo "claude-notifications version 1.0.0"; fi
+if [ "$1" = "version" ]; then echo "agent-notifications version 1.0.0"; fi
 echo "EXECUTED"
 MOCK_EOF
     chmod +x "$ROOT_DIR/bin/mock-binary.sh"
 
     if ! is_windows; then
         # Unix: create symlink as expected by wrapper
-        cp "$ROOT_DIR/bin/mock-binary.sh" "$ROOT_DIR/bin/claude-notifications"
-        chmod +x "$ROOT_DIR/bin/claude-notifications"
+        cp "$ROOT_DIR/bin/mock-binary.sh" "$ROOT_DIR/bin/agent-notifications"
+        chmod +x "$ROOT_DIR/bin/agent-notifications"
     fi
 
     # Create plugin.json with SAME version
@@ -1921,10 +1921,10 @@ touch "$INSTALL_TARGET_DIR/.update-triggered"
 INSTALL_EOF
     chmod +x "$ROOT_DIR/bin/install.sh"
 
-    # Run wrapper (on Windows, use CLAUDE_NOTIFICATIONS_BIN to bypass .bat detection)
+    # Run wrapper (on Windows, use AGENT_NOTIFICATIONS_BIN to bypass .bat detection)
     local run_env=""
     if is_windows; then
-        run_env="CLAUDE_NOTIFICATIONS_BIN=$ROOT_DIR/bin/mock-binary.sh"
+        run_env="AGENT_NOTIFICATIONS_BIN=$ROOT_DIR/bin/mock-binary.sh"
     fi
     output=$(echo '{}' | env $run_env sh "$ROOT_DIR/bin/hook-wrapper.sh" handle-hook Stop 2>&1) || true
 
@@ -2011,9 +2011,9 @@ test_hook_wrapper_mock_download() {
 
     # Check binary was downloaded
     if is_windows; then
-        assert_file_exists "$TEST_DIR/claude-notifications.bat" "Binary downloaded via wrapper (mock)"
+        assert_file_exists "$TEST_DIR/agent-notifications.bat" "Binary downloaded via wrapper (mock)"
     else
-        assert_file_exists "$TEST_DIR/claude-notifications" "Binary downloaded via wrapper (mock)"
+        assert_file_exists "$TEST_DIR/agent-notifications" "Binary downloaded via wrapper (mock)"
     fi
 
     cleanup_test_dir
@@ -2048,9 +2048,9 @@ test_hook_wrapper_real_download() {
 
     # Check binary was downloaded
     if is_windows; then
-        assert_file_exists "$TEST_DIR/claude-notifications.bat" "Binary downloaded via wrapper"
+        assert_file_exists "$TEST_DIR/agent-notifications.bat" "Binary downloaded via wrapper"
     else
-        assert_file_exists "$TEST_DIR/claude-notifications" "Binary downloaded via wrapper"
+        assert_file_exists "$TEST_DIR/agent-notifications" "Binary downloaded via wrapper"
     fi
 
     cleanup_test_dir
@@ -2079,9 +2079,9 @@ test_hook_wrapper_real_no_redownload() {
 
     # Get binary modification time
     if is_windows; then
-        BINARY="$TEST_DIR/claude-notifications.bat"
+        BINARY="$TEST_DIR/agent-notifications.bat"
     else
-        BINARY="$TEST_DIR/claude-notifications"
+        BINARY="$TEST_DIR/agent-notifications"
     fi
     mtime_before=$(stat -c %Y "$BINARY" 2>/dev/null || stat -f %m "$BINARY" 2>/dev/null)
 
@@ -2126,7 +2126,7 @@ test_hook_wrapper_real_binary_runs() {
     # Run wrapper with --version to verify binary actually executes
     output=$(sh "$TEST_DIR/hook-wrapper.sh" --version 2>&1) || true
 
-    if echo "$output" | grep -qE "claude-notifications|[0-9]+\.[0-9]+\.[0-9]+"; then
+    if echo "$output" | grep -qE "agent-notifications|[0-9]+\.[0-9]+\.[0-9]+"; then
         pass_test "Binary executes via wrapper"
     else
         fail_test "Binary executes via wrapper" "Output: $output"
@@ -2169,14 +2169,14 @@ test_hook_wrapper_real_concurrent_calls() {
     # Windows: check -f (file exists) since .bat files aren't executable
     # Unix: check -x (executable)
     if is_windows; then
-        BINARY="$TEST_DIR/claude-notifications.bat"
+        BINARY="$TEST_DIR/agent-notifications.bat"
         if [ -f "$BINARY" ]; then
             pass_test "Concurrent calls don't corrupt installation"
         else
             fail_test "Concurrent calls don't corrupt installation" "Binary missing"
         fi
     else
-        BINARY="$TEST_DIR/claude-notifications"
+        BINARY="$TEST_DIR/agent-notifications"
         if [ -x "$BINARY" ]; then
             pass_test "Concurrent calls don't corrupt installation"
         else
@@ -2249,15 +2249,15 @@ main() {
         # /releases/latest may have switched to the new release (without binaries yet).
         RELEASE_BINARY_AVAILABLE=false
         if real_network_tests_supported; then
-            local _check_url="https://github.com/777genius/claude-notifications-go/releases/latest/download"
+            local _check_url="https://github.com/777genius/agent-notifications-go/releases/latest/download"
             local _check_bin
             case "$(uname -s)-$(uname -m)" in
-                Linux-x86_64)       _check_bin="claude-notifications-linux-amd64" ;;
-                Linux-aarch64)      _check_bin="claude-notifications-linux-arm64" ;;
-                Darwin-arm64)       _check_bin="claude-notifications-darwin-arm64" ;;
-                Darwin-x86_64)      _check_bin="claude-notifications-darwin-amd64" ;;
-                MINGW*|MSYS*|CYGWIN*) _check_bin="claude-notifications-windows-amd64.exe" ;;
-                *)                  _check_bin="claude-notifications-linux-amd64" ;;
+                Linux-x86_64)       _check_bin="agent-notifications-linux-amd64" ;;
+                Linux-aarch64)      _check_bin="agent-notifications-linux-arm64" ;;
+                Darwin-arm64)       _check_bin="agent-notifications-darwin-arm64" ;;
+                Darwin-x86_64)      _check_bin="agent-notifications-darwin-amd64" ;;
+                MINGW*|MSYS*|CYGWIN*) _check_bin="agent-notifications-windows-amd64.exe" ;;
+                *)                  _check_bin="agent-notifications-linux-amd64" ;;
             esac
 
             # Step 1: Check that latest release version matches our plugin.json version
@@ -2268,7 +2268,7 @@ main() {
                 _our_version=$(grep '"version"' "$_plugin_json" | head -1 | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
             fi
             local _latest_tag=""
-            _latest_tag=$(curl -sI -o /dev/null -w "%{redirect_url}" --connect-timeout 5 "https://github.com/777genius/claude-notifications-go/releases/latest" 2>/dev/null | sed 's|.*/tag/v||')
+            _latest_tag=$(curl -sI -o /dev/null -w "%{redirect_url}" --connect-timeout 5 "https://github.com/777genius/agent-notifications-go/releases/latest" 2>/dev/null | sed 's|.*/tag/v||')
 
             if [ -n "$_our_version" ] && [ -n "$_latest_tag" ] && [ "$_our_version" != "$_latest_tag" ]; then
                 echo -e "  ${YELLOW}⚠${NC} Release version mismatch: ours=v${_our_version}, latest=v${_latest_tag} — download tests will be skipped"

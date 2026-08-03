@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/internal/dedup"
-	"github.com/777genius/claude-notifications/internal/state"
-	"github.com/777genius/claude-notifications/internal/webhook"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/dedup"
+	"github.com/777genius/agent-notifications-go/internal/state"
+	"github.com/777genius/agent-notifications-go/internal/webhook"
 )
 
 // === E2E Test: Full Notification Cycle ===
@@ -291,7 +291,7 @@ func TestE2E_WebhookRetry(t *testing.T) {
 
 	for i, req := range requests {
 		// Check User-Agent
-		if req.Header.Get("User-Agent") != "claude-notifications/1.0" {
+		if req.Header.Get("User-Agent") != "agent-notifications/1.0" {
 			t.Errorf("Request %d: wrong User-Agent: %s", i+1, req.Header.Get("User-Agent"))
 		}
 

@@ -1253,7 +1253,7 @@ func TestGetStableConfigPath(t *testing.T) {
 
 	path, err := GetStableConfigPath()
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(home, ".claude", "claude-notifications-go", "config.json"), path)
+	assert.Equal(t, filepath.Join(home, ".claude", "agent-notifications-go", "config.json"), path)
 }
 
 func TestGetStableConfigPath_NoHome(t *testing.T) {
@@ -1275,7 +1275,7 @@ func TestLoadFromPluginRoot_StablePathFirst(t *testing.T) {
 	setTestHome(t, home)
 
 	// Create config at stable path
-	stableDir := filepath.Join(home, ".claude", "claude-notifications-go")
+	stableDir := filepath.Join(home, ".claude", "agent-notifications-go")
 	require.NoError(t, os.MkdirAll(stableDir, 0700))
 	stableConfig := `{"notifications":{"desktop":{"enabled":false,"sound":false},"webhook":{"enabled":true,"url":"https://stable.example.com"}}}`
 	require.NoError(t, os.WriteFile(filepath.Join(stableDir, "config.json"), []byte(stableConfig), 0600))
@@ -1308,7 +1308,7 @@ func TestLoadFromPluginRoot_MigratesFromOldPath(t *testing.T) {
 	assert.Equal(t, "https://old.example.com", cfg.Notifications.Webhook.URL)
 
 	// Verify migration happened
-	stablePath := filepath.Join(home, ".claude", "claude-notifications-go", "config.json")
+	stablePath := filepath.Join(home, ".claude", "agent-notifications-go", "config.json")
 	assert.FileExists(t, stablePath)
 
 	// Verify file permissions (0600 — owner-only for security)
@@ -1329,7 +1329,7 @@ func TestLoadFromPluginRoot_StableTakesPriority(t *testing.T) {
 	setTestHome(t, home)
 
 	// Create config at BOTH paths with different values
-	stableDir := filepath.Join(home, ".claude", "claude-notifications-go")
+	stableDir := filepath.Join(home, ".claude", "agent-notifications-go")
 	require.NoError(t, os.MkdirAll(stableDir, 0700))
 	stableConfig := `{"notifications":{"webhook":{"enabled":true,"url":"https://stable.example.com"}}}`
 	require.NoError(t, os.WriteFile(filepath.Join(stableDir, "config.json"), []byte(stableConfig), 0600))
@@ -1350,7 +1350,7 @@ func TestLoadFromPluginRoot_CorruptedStableFallsBackToOld(t *testing.T) {
 	setTestHome(t, home)
 
 	// Corrupted stable config
-	stableDir := filepath.Join(home, ".claude", "claude-notifications-go")
+	stableDir := filepath.Join(home, ".claude", "agent-notifications-go")
 	require.NoError(t, os.MkdirAll(stableDir, 0700))
 	require.NoError(t, os.WriteFile(filepath.Join(stableDir, "config.json"), []byte("{ broken json }"), 0600))
 
@@ -1371,7 +1371,7 @@ func TestLoadFromPluginRoot_CorruptedBothFallsToDefault(t *testing.T) {
 	setTestHome(t, home)
 
 	// Corrupted stable config
-	stableDir := filepath.Join(home, ".claude", "claude-notifications-go")
+	stableDir := filepath.Join(home, ".claude", "agent-notifications-go")
 	require.NoError(t, os.MkdirAll(stableDir, 0700))
 	require.NoError(t, os.WriteFile(filepath.Join(stableDir, "config.json"), []byte("{ broken }"), 0600))
 

@@ -14,12 +14,12 @@ import (
 
 	"github.com/gen2brain/beeep"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
-	"github.com/777genius/claude-notifications/internal/audio"
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/internal/errorhandler"
-	"github.com/777genius/claude-notifications/internal/logging"
-	"github.com/777genius/claude-notifications/internal/platform"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/audio"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/errorhandler"
+	"github.com/777genius/agent-notifications-go/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/platform"
 )
 
 const macOSPermissionDeniedMessage = "Notification permission denied. Enable in System Settings > Notifications."
@@ -29,7 +29,7 @@ var beeepNotify = beeep.Notify
 var notifierGOOS = runtime.GOOS
 
 // NotificationPermissionDeniedError indicates macOS rejected the native
-// ClaudeNotifier path because notification permission is denied for the app.
+// AgentNotifier path because notification permission is denied for the app.
 type NotificationPermissionDeniedError struct {
 	Details string
 }
@@ -70,7 +70,7 @@ func isTimeSensitiveStatus(status analyzer.Status) bool {
 }
 
 // SendDesktop sends a desktop notification.
-// On macOS, it always prefers ClaudeNotifier/terminal-notifier to avoid
+// On macOS, it always prefers AgentNotifier/terminal-notifier to avoid
 // Script Editor attribution and optionally enables click-to-focus.
 // On Linux with clickToFocus enabled, it uses the background daemon.
 // cwd is the working directory of the project; used for window-specific focus. May be empty.
@@ -130,7 +130,7 @@ func (n *Notifier) SendDesktop(status analyzer.Status, message, sessionID, cwd, 
 		appIcon = ""
 	}
 
-	// macOS: prefer ClaudeNotifier/terminal-notifier so the common path keeps the
+	// macOS: prefer AgentNotifier/terminal-notifier so the common path keeps the
 	// native app attribution. If that fails, fall back to beeep as a delivery
 	// safety net rather than dropping the notification entirely.
 	if platform.IsMacOS() {
@@ -146,17 +146,17 @@ func (n *Notifier) SendDesktop(status analyzer.Status, message, sessionID, cwd, 
 			); err != nil {
 				var permissionErr *NotificationPermissionDeniedError
 				if errors.As(err, &permissionErr) {
-					logging.Warn("ClaudeNotifier permission denied on macOS: %v", err)
+					logging.Warn("AgentNotifier permission denied on macOS: %v", err)
 					return err
 				}
-				logging.Warn("ClaudeNotifier failed on macOS, falling back to beeep: %v", err)
+				logging.Warn("AgentNotifier failed on macOS, falling back to beeep: %v", err)
 			} else {
-				logging.Debug("Desktop notification sent via ClaudeNotifier/terminal-notifier: title=%s", title)
+				logging.Debug("Desktop notification sent via AgentNotifier/terminal-notifier: title=%s", title)
 				n.playSoundDetached(statusInfo.Sound)
 				return nil
 			}
 		} else {
-			logging.Warn("ClaudeNotifier not available on macOS, falling back to beeep (run /claude-notifications-go:init to install it)")
+			logging.Warn("AgentNotifier not available on macOS, falling back to beeep (run /agent-notifications-go:init to install it)")
 		}
 	}
 
@@ -226,11 +226,11 @@ func (n *Notifier) sendWithTerminalNotifier(title, message, subtitle, sessionID 
 	// Always suppress sound in Swift — Go manages sound via audio player
 	args = append(args, "-nosound")
 
-	if appPath, ok := claudeNotifierAppPath(notifierPath); ok {
-		if err := runClaudeNotifierApp(appPath, args); err != nil {
+	if appPath, ok := agentNotifierAppPath(notifierPath); ok {
+		if err := runAgentNotifierApp(appPath, args); err != nil {
 			return err
 		}
-		logging.Debug("ClaudeNotifier executed via LaunchServices: bundleID=%s", bundleID)
+		logging.Debug("AgentNotifier executed via LaunchServices: bundleID=%s", bundleID)
 		return nil
 	}
 
@@ -245,10 +245,10 @@ func (n *Notifier) sendWithTerminalNotifier(title, message, subtitle, sessionID 
 	return nil
 }
 
-func runClaudeNotifierApp(appPath string, args []string) error {
+func runAgentNotifierApp(appPath string, args []string) error {
 	tempDir, err := os.MkdirTemp("", "claude-notifier-open-*")
 	if err != nil {
-		return fmt.Errorf("failed to create temp dir for ClaudeNotifier launch: %w", err)
+		return fmt.Errorf("failed to create temp dir for AgentNotifier launch: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
@@ -279,23 +279,23 @@ func runClaudeNotifierApp(appPath string, args []string) error {
 
 	if runErr != nil {
 		if stderrText != "" {
-			return fmt.Errorf("ClaudeNotifier open failed: %w, stderr: %s", runErr, stderrText)
+			return fmt.Errorf("AgentNotifier open failed: %w, stderr: %s", runErr, stderrText)
 		}
-		return fmt.Errorf("ClaudeNotifier open failed: %w", runErr)
+		return fmt.Errorf("AgentNotifier open failed: %w", runErr)
 	}
 
 	if stderrText != "" {
-		return fmt.Errorf("ClaudeNotifier reported an error: %s", stderrText)
+		return fmt.Errorf("AgentNotifier reported an error: %s", stderrText)
 	}
 
 	return nil
 }
 
 // buildNotifierCommand builds the execution command for a notifier binary.
-// ClaudeNotifier.app must be launched via LaunchServices so
+// AgentNotifier.app must be launched via LaunchServices so
 // UNUserNotificationCenter gets valid bundle metadata under hardened runtime.
 func buildNotifierCommand(notifierPath string, args []string) *exec.Cmd {
-	if appPath, ok := claudeNotifierAppPath(notifierPath); ok {
+	if appPath, ok := agentNotifierAppPath(notifierPath); ok {
 		openArgs := []string{"-W", "-n", "-g", appPath, "--args", "-launchedViaLaunchServices"}
 		openArgs = append(openArgs, args...)
 		return exec.Command("open", openArgs...)
@@ -304,9 +304,9 @@ func buildNotifierCommand(notifierPath string, args []string) *exec.Cmd {
 	return exec.Command(notifierPath, args...)
 }
 
-// claudeNotifierAppPath extracts ClaudeNotifier.app from the embedded
+// agentNotifierAppPath extracts AgentNotifier.app from the embedded
 // terminal-notifier-modern executable path.
-func claudeNotifierAppPath(notifierPath string) (string, bool) {
+func agentNotifierAppPath(notifierPath string) (string, bool) {
 	cleanPath := filepath.Clean(notifierPath)
 	suffix := filepath.Join("Contents", "MacOS", "terminal-notifier-modern")
 	if !strings.HasSuffix(cleanPath, suffix) {
@@ -315,7 +315,7 @@ func claudeNotifierAppPath(notifierPath string) (string, bool) {
 
 	bundlePath := strings.TrimSuffix(cleanPath, suffix)
 	bundlePath = strings.TrimSuffix(bundlePath, string(filepath.Separator))
-	if !strings.HasSuffix(bundlePath, "ClaudeNotifier.app") {
+	if !strings.HasSuffix(bundlePath, "AgentNotifier.app") {
 		return "", false
 	}
 
@@ -397,7 +397,7 @@ func buildFocusScriptWithOptions(bundleID, cwd, ghosttyTerminalID string) string
 	// Automation permission prompts for notification click handlers — osascript fails silently.
 	// The focus-window approach uses Accessibility + Screen Recording instead of Automation,
 	// with graceful fallback to app-level activation when permissions are not granted.
-	// See: https://github.com/777genius/claude-notifications-go/issues/47
+	// See: https://github.com/777genius/agent-notifications-go/issues/47
 	return buildBinaryFocusScript(bundleID, cwd, "")
 }
 
@@ -525,7 +525,7 @@ func (n *Notifier) sendWithBeeep(title, message, appIcon, sound string) error {
 	// - Windows: Use fixed AppName to prevent registry pollution. Each unique AppName
 	//   creates a persistent entry in HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\
 	//   CurrentVersion\Notifications\Settings\ that is never cleaned up.
-	//   See: https://github.com/777genius/claude-notifications-go/issues/4
+	//   See: https://github.com/777genius/agent-notifications-go/issues/4
 	// - macOS/Linux: Use unique AppName to prevent notification grouping/replacement,
 	//   allowing multiple notifications to be displayed simultaneously.
 	appName := n.cfg.GetDesktopAppName()

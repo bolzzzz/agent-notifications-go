@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Collect Linux click-to-focus diagnostics for Claude Notifications.
+# Collect Linux click-to-focus diagnostics for Agent Notifications.
 
 set -uo pipefail
 
-REPO="777genius/claude-notifications-go"
+REPO="777genius/agent-notifications-go"
 RAW_URL="https://raw.githubusercontent.com/${REPO}/main/scripts/linux-focus-debug.sh"
-MARKETPLACE_NAME="claude-notifications-go"
-PLUGIN_NAME="claude-notifications-go"
+MARKETPLACE_NAME="agent-notifications-go"
+PLUGIN_NAME="agent-notifications-go"
 PLUGIN_KEY="${PLUGIN_NAME}@${MARKETPLACE_NAME}"
 
 CLAUDE_HOME="${CLAUDE_CONFIG_DIR:-${CLAUDE_HOME:-$HOME/.claude}}"
 KNOWN_MARKETPLACES_JSON="${CLAUDE_HOME}/plugins/known_marketplaces.json"
 INSTALLED_JSON="${CLAUDE_HOME}/plugins/installed_plugins.json"
-STABLE_CONFIG_JSON="${CLAUDE_HOME}/claude-notifications-go/config.json"
+STABLE_CONFIG_JSON="${CLAUDE_HOME}/agent-notifications-go/config.json"
 
-DEFAULT_REPORT_PATH="${PWD}/claude-notifications-linux-focus-report-$(date +%Y%m%d-%H%M%S).txt"
+DEFAULT_REPORT_PATH="${PWD}/agent-notifications-linux-focus-report-$(date +%Y%m%d-%H%M%S).txt"
 REPORT_PATH="${REPORT_PATH:-$DEFAULT_REPORT_PATH}"
 WRITE_TO_STDOUT=0
 REPORT_FILE=""
@@ -359,7 +359,7 @@ INSTALL_PATH="$(get_install_path)"
 MARKETPLACE_SOURCE="$(get_marketplace_source)"
 PLUGIN_LOG_PATH="$(resolve_plugin_log_path "$INSTALL_PATH")"
 
-write_line "Claude Notifications Linux Focus Debug Report"
+write_line "Agent Notifications Linux Focus Debug Report"
 write_line "Generated at: $(date -Is 2>/dev/null || date)"
 write_line "Hostname: $(hostname 2>/dev/null || echo unknown)"
 

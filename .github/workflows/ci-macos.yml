@@ -55,10 +55,10 @@ jobs:
         run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Build binary
-        run: go build -o bin/claude-notifications ./cmd/claude-notifications
+        run: go build -o bin/agent-notifications ./cmd/agent-notifications
 
       - name: Test binary execution (help)
-        run: ./bin/claude-notifications help
+        run: ./bin/agent-notifications help
 
       - name: Build sound preview binary
         run: go build -o bin/sound-preview ./cmd/sound-preview

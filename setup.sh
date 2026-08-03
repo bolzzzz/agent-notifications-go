@@ -4,13 +4,13 @@
 set -e
 
 echo "=========================================="
-echo " Claude Notifications Plugin - Setup"
+echo " Agent Notifications Plugin - Setup"
 echo "=========================================="
 echo ""
 
 # Check if wrapper script exists
-if [ ! -f "bin/claude-notifications" ]; then
-    echo "❌ Error: bin/claude-notifications wrapper not found"
+if [ ! -f "bin/agent-notifications" ]; then
+    echo "❌ Error: bin/agent-notifications wrapper not found"
     echo ""
     echo "This file should be included in the repository."
     exit 1
@@ -25,7 +25,7 @@ if [ ! -f "bin/install.sh" ]; then
 fi
 
 # Make scripts executable
-chmod +x bin/claude-notifications
+chmod +x bin/agent-notifications
 chmod +x bin/install.sh
 
 echo "✓ Plugin scripts verified"
@@ -39,18 +39,18 @@ echo ""
 echo "Run these commands inside Claude Code:"
 echo ""
 echo "1. Add marketplace:"
-echo "   /plugin marketplace add 777genius/claude-notifications-go"
+echo "   /plugin marketplace add 777genius/agent-notifications-go"
 echo ""
 echo "2. Install plugin:"
-echo "   /plugin install claude-notifications-go@claude-notifications-go"
+echo "   /plugin install agent-notifications-go@agent-notifications-go"
 echo ""
 echo "3. Restart Claude Code for hooks to take effect"
 echo ""
 echo "4. Download the binary for your platform:"
-echo "   /claude-notifications-go:init"
+echo "   /agent-notifications-go:init"
 echo ""
 echo "5. Configure notification sounds (optional):"
-echo "   /claude-notifications-go:settings"
+echo "   /agent-notifications-go:settings"
 echo ""
 echo "   This will let you:"
 echo "   - Preview and choose notification sounds"
@@ -58,5 +58,5 @@ echo "   - Configure volume"
 echo "   - Set up webhooks (optional)"
 echo ""
 echo "Note: The binary will be downloaded automatically when you"
-echo "      run /claude-notifications-go:init for the first time."
+echo "      run /agent-notifications-go:init for the first time."
 echo ""

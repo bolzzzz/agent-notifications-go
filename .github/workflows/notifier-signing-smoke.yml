@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   smoke-notifier:
-    name: Build, Sign, Optionally Notarize ClaudeNotifier.app
+    name: Build, Sign, Optionally Notarize AgentNotifier.app
     runs-on: macos-15
     timeout-minutes: 60
 
@@ -57,7 +57,7 @@ jobs:
 
           security list-keychains -d user -s "$KEYCHAIN_PATH" "${EXISTING_KEYCHAINS[@]}"
 
-      - name: Build, sign, and optionally notarize ClaudeNotifier.app
+      - name: Build, sign, and optionally notarize AgentNotifier.app
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -72,18 +72,18 @@ jobs:
 
       - name: Verify signature metadata
         run: |
-          codesign -dv --verbose=4 swift-notifier/ClaudeNotifier.app || true
-          codesign --display --entitlements :- swift-notifier/ClaudeNotifier.app || true
+          codesign -dv --verbose=4 swift-notifier/AgentNotifier.app || true
+          codesign --display --entitlements :- swift-notifier/AgentNotifier.app || true
 
       - name: Create zip artifact
         run: |
           cd swift-notifier
-          ditto -c -k --keepParent ClaudeNotifier.app ClaudeNotifier-smoke.app.zip
-          ls -lh ClaudeNotifier-smoke.app.zip
+          ditto -c -k --keepParent AgentNotifier.app AgentNotifier-smoke.app.zip
+          ls -lh AgentNotifier-smoke.app.zip
 
       - name: Upload smoke artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ClaudeNotifier-smoke
-          path: swift-notifier/ClaudeNotifier-smoke.app.zip
+          name: AgentNotifier-smoke
+          path: swift-notifier/AgentNotifier-smoke.app.zip
           retention-days: 3

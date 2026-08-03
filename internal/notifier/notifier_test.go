@@ -14,8 +14,8 @@ import (
 
 	"github.com/gen2brain/beeep"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
-	"github.com/777genius/claude-notifications/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/config"
 )
 
 func TestExtractSessionInfo(t *testing.T) {
@@ -759,7 +759,7 @@ func TestBuildTerminalNotifierArgs_GroupIDStablePerCwd(t *testing.T) {
 }
 
 // NOTE: TestSendWithTerminalNotifier_Integration and TestTerminalNotifier_CommandExecution
-// are in notifier_darwin_integration_test.go (require setupClaudeNotifierEnv which is darwin-only)
+// are in notifier_darwin_integration_test.go (require setupAgentNotifierEnv which is darwin-only)
 
 // === Fallback logic tests ===
 
@@ -797,35 +797,35 @@ func TestSendDesktop_ClickToFocusDisabledStillDoesNotPanic(t *testing.T) {
 	_ = err
 }
 
-func TestClaudeNotifierAppPath_RecognizesBundleExecutable(t *testing.T) {
+func TestAgentNotifierAppPath_RecognizesBundleExecutable(t *testing.T) {
 	notifierPath := filepath.Join(
 		string(filepath.Separator),
 		"tmp",
 		"plugin",
 		"bin",
-		"ClaudeNotifier.app",
+		"AgentNotifier.app",
 		"Contents",
 		"MacOS",
 		"terminal-notifier-modern",
 	)
 
-	appPath, ok := claudeNotifierAppPath(notifierPath)
+	appPath, ok := agentNotifierAppPath(notifierPath)
 	if !ok {
-		t.Fatal("Expected ClaudeNotifier path to be recognized")
+		t.Fatal("Expected AgentNotifier path to be recognized")
 	}
-	if filepath.Base(appPath) != "ClaudeNotifier.app" {
-		t.Fatalf("Expected app path to end with ClaudeNotifier.app, got %s", appPath)
+	if filepath.Base(appPath) != "AgentNotifier.app" {
+		t.Fatalf("Expected app path to end with AgentNotifier.app, got %s", appPath)
 	}
 }
 
-func TestClaudeNotifierAppPath_IgnoresLegacyBinary(t *testing.T) {
+func TestAgentNotifierAppPath_IgnoresLegacyBinary(t *testing.T) {
 	notifierPath := filepath.Join(string(filepath.Separator), "usr", "local", "bin", "terminal-notifier")
-	if _, ok := claudeNotifierAppPath(notifierPath); ok {
-		t.Fatalf("Legacy terminal-notifier path should not be treated as ClaudeNotifier.app: %s", notifierPath)
+	if _, ok := agentNotifierAppPath(notifierPath); ok {
+		t.Fatalf("Legacy terminal-notifier path should not be treated as AgentNotifier.app: %s", notifierPath)
 	}
 }
 
-func TestBuildNotifierCommand_UsesOpenForClaudeNotifier(t *testing.T) {
+func TestBuildNotifierCommand_UsesOpenForAgentNotifier(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("Skipping macOS-specific LaunchServices command test")
 	}
@@ -835,7 +835,7 @@ func TestBuildNotifierCommand_UsesOpenForClaudeNotifier(t *testing.T) {
 		"tmp",
 		"plugin",
 		"bin",
-		"ClaudeNotifier.app",
+		"AgentNotifier.app",
 		"Contents",
 		"MacOS",
 		"terminal-notifier-modern",
@@ -844,7 +844,7 @@ func TestBuildNotifierCommand_UsesOpenForClaudeNotifier(t *testing.T) {
 	cmd := buildNotifierCommand(notifierPath, []string{"-title", "Test", "-message", "Hello"})
 	commandBase := strings.ToLower(filepath.Base(cmd.Path))
 	if commandBase != "open" && commandBase != "open.exe" {
-		t.Fatalf("Expected open command for ClaudeNotifier.app, got %s", cmd.Path)
+		t.Fatalf("Expected open command for AgentNotifier.app, got %s", cmd.Path)
 	}
 
 	if len(cmd.Args) < 9 {
@@ -872,11 +872,11 @@ func TestBuildNotifierCommand_UsesDirectBinaryForLegacy(t *testing.T) {
 	}
 }
 
-func TestRunClaudeNotifierApp_PermissionDeniedError(t *testing.T) {
+func TestRunAgentNotifierApp_PermissionDeniedError(t *testing.T) {
 	restoreExecCommand := installFakeOpen(t, fmt.Sprintf("Error: %s", macOSPermissionDeniedMessage), 0)
 	defer restoreExecCommand()
 
-	err := runClaudeNotifierApp("/tmp/ClaudeNotifier.app", []string{"-title", "Test"})
+	err := runAgentNotifierApp("/tmp/AgentNotifier.app", []string{"-title", "Test"})
 	if err == nil {
 		t.Fatal("expected permission denied error, got nil")
 	}
@@ -887,18 +887,18 @@ func TestRunClaudeNotifierApp_PermissionDeniedError(t *testing.T) {
 	}
 }
 
-func TestRunClaudeNotifierApp_ReportsGenericStderr(t *testing.T) {
+func TestRunAgentNotifierApp_ReportsGenericStderr(t *testing.T) {
 	restoreExecCommand := installFakeOpen(t, "Error: unexpected notifier failure", 0)
 	defer restoreExecCommand()
 
-	err := runClaudeNotifierApp("/tmp/ClaudeNotifier.app", []string{"-title", "Test"})
+	err := runAgentNotifierApp("/tmp/AgentNotifier.app", []string{"-title", "Test"})
 	if err == nil {
 		t.Fatal("expected generic notifier error, got nil")
 	}
 	if strings.Contains(err.Error(), macOSPermissionDeniedMessage) {
 		t.Fatalf("did not expect permission denied classification, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "ClaudeNotifier reported an error") {
+	if !strings.Contains(err.Error(), "AgentNotifier reported an error") {
 		t.Fatalf("expected generic stderr error, got %v", err)
 	}
 }

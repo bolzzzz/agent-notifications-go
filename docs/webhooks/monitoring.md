@@ -49,7 +49,7 @@ StatusCounts["session_limit_reached"] // Count of session_limit_reached notifica
 Metrics are tracked internally and accessible programmatically:
 
 ```go
-import "github.com/777genius/claude-notifications/internal/webhook"
+import "github.com/777genius/agent-notifications/internal/webhook"
 
 sender := webhook.New(cfg)
 stats := sender.GetMetrics()
@@ -176,8 +176,8 @@ grep "webhook failed (final attempt)" notification-debug.log | wc -l
 Enable verbose logging for debugging:
 
 ```bash
-export CLAUDE_NOTIFICATIONS_DEBUG=1
-bin/claude-notifications handle-hook Stop < test-data.json
+export AGENT_NOTIFICATIONS_DEBUG=1
+bin/agent-notifications handle-hook Stop < test-data.json
 ```
 
 This adds additional debug information:
@@ -221,14 +221,14 @@ Example output:
 
 If your webhook endpoint logs requests, use the `X-Request-ID` header to correlate:
 
-**Claude Notifications log:**
+**Agent Notifications log:**
 ```
 [webhook] Sending webhook: request_id=550e8400-... session=abc-123
 ```
 
 **Your webhook endpoint log:**
 ```
-Received webhook: request_id=550e8400-... from=claude-notifications
+Received webhook: request_id=550e8400-... from=agent-notifications
 ```
 
 ## Monitoring Examples

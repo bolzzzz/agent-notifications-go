@@ -1,5 +1,5 @@
 {
-    "name": "claude-notifications-go",
+    "name": "agent-notifications-go",
     "version": "1.40.1",
     "description": "Smart notifications for Claude Code task statuses (Go implementation)",
     "author": {
@@ -7,7 +7,7 @@
         "email": "iliyazelenkog@gmail.com"
     },
     "license": "GPL-3.0",
-    "repository": "https://github.com/777genius/claude-notifications-go",
+    "repository": "https://github.com/777genius/agent-notifications-go",
     "keywords": ["notifications", "alerts", "productivity", "go"],
     "commands": [
         "./commands/init.md",

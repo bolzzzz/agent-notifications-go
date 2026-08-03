@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/logging"
 )
 
 // teamConfig represents the relevant fields from ~/.claude/teams/{name}/config.json
@@ -145,12 +145,12 @@ func (m *Manager) DetectTeamByName(teamName string) *TeamInfo {
 
 // statePath returns the path to the state file for a team
 func statePath(teamName string) string {
-	return filepath.Join(os.TempDir(), fmt.Sprintf("claude-team-notify-%s.json", teamName))
+	return filepath.Join(os.TempDir(), fmt.Sprintf("agent-team-notify-%s.json", teamName))
 }
 
 // lockPath returns the path to the flock file for a team
 func lockPath(teamName string) string {
-	return filepath.Join(os.TempDir(), fmt.Sprintf("claude-team-notify-%s.lock", teamName))
+	return filepath.Join(os.TempDir(), fmt.Sprintf("agent-team-notify-%s.lock", teamName))
 }
 
 // loadStateUnlocked reads team state from disk without locking.
@@ -309,8 +309,8 @@ func (m *Manager) MarkNotified(teamName string) error {
 func (m *Manager) Cleanup(maxAgeSec int64) {
 	cutoff := time.Now().Add(-time.Duration(maxAgeSec) * time.Second)
 	for _, pattern := range []string{
-		filepath.Join(os.TempDir(), "claude-team-notify-*.json"),
-		filepath.Join(os.TempDir(), "claude-team-notify-*.lock"),
+		filepath.Join(os.TempDir(), "agent-team-notify-*.json"),
+		filepath.Join(os.TempDir(), "agent-team-notify-*.lock"),
 	} {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {

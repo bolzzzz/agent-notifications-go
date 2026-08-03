@@ -121,28 +121,28 @@ func TestGetTerminalNotifierPath(t *testing.T) {
 	}
 }
 
-func TestGetTerminalNotifierPath_ClaudeNotifier(t *testing.T) {
-	cleanup, ok := setupClaudeNotifierEnv(t)
+func TestGetTerminalNotifierPath_AgentNotifier(t *testing.T) {
+	cleanup, ok := setupAgentNotifierEnv(t)
 	defer cleanup()
 	if !ok {
-		t.Skip("ClaudeNotifier.app not built (run 'make build-notifier' first)")
+		t.Skip("AgentNotifier.app not built (run 'make build-notifier' first)")
 	}
 
 	path, err := GetTerminalNotifierPath()
 	if err != nil {
-		t.Fatalf("Expected ClaudeNotifier.app to be found, got error: %v", err)
+		t.Fatalf("Expected AgentNotifier.app to be found, got error: %v", err)
 	}
 
 	if !filepath.IsAbs(path) {
 		t.Errorf("Expected absolute path, got: %s", path)
 	}
 
-	// Should resolve to ClaudeNotifier.app binary
+	// Should resolve to AgentNotifier.app binary
 	if filepath.Base(path) != "terminal-notifier-modern" {
 		t.Errorf("Expected binary name 'terminal-notifier-modern', got: %s", filepath.Base(path))
 	}
 
-	t.Logf("ClaudeNotifier found at: %s", path)
+	t.Logf("AgentNotifier found at: %s", path)
 }
 
 func TestGetTerminalBundleID_AllMappings(t *testing.T) {
@@ -212,7 +212,7 @@ func TestGetTerminalNotifierPath_DevelopmentFallback(t *testing.T) {
 	devBinary := filepath.Join(
 		repoRoot,
 		"swift-notifier",
-		"ClaudeNotifier.app",
+		"AgentNotifier.app",
 		"Contents",
 		"MacOS",
 		"terminal-notifier-modern",

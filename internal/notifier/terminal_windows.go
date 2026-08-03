@@ -11,9 +11,9 @@ import (
 
 	toast "git.sr.ht/~jackmordaunt/go-toast"
 
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/internal/logging"
-	"github.com/777genius/claude-notifications/internal/winfocus"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/winfocus"
 )
 
 // windowsToastAppID is the AppID shown in Action Center. Kept fixed (matching
@@ -33,8 +33,8 @@ func GetTerminalNotifierPath() (string, error) {
 // IsTerminalNotifierAvailable returns false on Windows.
 func IsTerminalNotifierAvailable() bool { return false }
 
-// EnsureClaudeNotificationsApp is a no-op on Windows.
-func EnsureClaudeNotificationsApp() error { return nil }
+// EnsureAgentNotificationsApp is a no-op on Windows.
+func EnsureAgentNotificationsApp() error { return nil }
 
 // --- Linux daemon helpers: stubs so the notifier package compiles on Windows ---
 

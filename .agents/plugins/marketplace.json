@@ -1,11 +1,11 @@
 {
-  "name": "claude-notifications-go",
+  "name": "agent-notifications-go",
   "interface": {
-    "displayName": "Claude Notifications Go"
+    "displayName": "Agent Notifications Go"
   },
   "plugins": [
     {
-      "name": "claude-notifications-go",
+      "name": "agent-notifications-go",
       "source": {
         "source": "local",
         "path": "./"

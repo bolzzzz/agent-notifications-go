@@ -15,7 +15,7 @@ func IsKitty() bool {
 }
 
 // getKittyPath returns the absolute path to the kitten binary.
-// ClaudeNotifier.app runs without the user's PATH, so we need the full path.
+// AgentNotifier.app runs without the user's PATH, so we need the full path.
 func getKittyPath() string {
 	if path, err := exec.LookPath("kitten"); err == nil {
 		return path

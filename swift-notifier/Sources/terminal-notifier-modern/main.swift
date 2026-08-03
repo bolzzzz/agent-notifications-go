@@ -38,19 +38,19 @@ func runSendMode(arguments: [String]) {
     }
 
     guard arguments.contains(launchServicesMarker) else {
-        failAndExit("ClaudeNotifier must be launched via LaunchServices (use 'open -W -n ClaudeNotifier.app --args ...')")
+        failAndExit("AgentNotifier must be launched via LaunchServices (use 'open -W -n AgentNotifier.app --args ...')")
         return
     }
 
     // Without valid app bundle metadata, UNUserNotificationCenter may crash with
     // "bundleProxyForCurrentProcess is nil".
     guard Bundle.main.bundleIdentifier != nil else {
-        failAndExit("ClaudeNotifier bundle metadata unavailable; LaunchServices did not provide a bundle proxy")
+        failAndExit("AgentNotifier bundle metadata unavailable; LaunchServices did not provide a bundle proxy")
         return
     }
 
     guard Bundle.main.bundleURL.pathExtension == "app" else {
-        failAndExit("ClaudeNotifier is not running from an app bundle")
+        failAndExit("AgentNotifier is not running from an app bundle")
         return
     }
 

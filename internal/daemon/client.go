@@ -214,7 +214,7 @@ func StopDaemon() error {
 func findDaemonBinary() (string, error) {
 	// Honour explicit override (set in settings.json for custom installs or
 	// when the platform binary has a non-standard name).
-	if bin := os.Getenv("CLAUDE_NOTIFICATIONS_BIN"); bin != "" {
+	if bin := os.Getenv("AGENT_NOTIFICATIONS_BIN"); bin != "" {
 		if _, err := os.Stat(bin); err == nil {
 			return bin, nil
 		}
@@ -223,7 +223,7 @@ func findDaemonBinary() (string, error) {
 	// Check CLAUDE_PLUGIN_ROOT
 	if pluginRoot := os.Getenv("CLAUDE_PLUGIN_ROOT"); pluginRoot != "" {
 		// Try different binary names
-		for _, name := range []string{"claude-notifications", "focus-daemon"} {
+		for _, name := range []string{"agent-notifications", "focus-daemon"} {
 			path := filepath.Join(pluginRoot, "bin", name)
 			if _, err := os.Stat(path); err == nil {
 				return path, nil
@@ -237,7 +237,7 @@ func findDaemonBinary() (string, error) {
 	}
 
 	// Try to find in PATH
-	if path, err := exec.LookPath("claude-notifications"); err == nil {
+	if path, err := exec.LookPath("agent-notifications"); err == nil {
 		return path, nil
 	}
 

@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/internal/daemon"
-	"github.com/777genius/claude-notifications/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/daemon"
+	"github.com/777genius/agent-notifications-go/internal/logging"
 	"github.com/gen2brain/beeep"
 )
 
@@ -35,8 +35,8 @@ func IsTerminalNotifierAvailable() bool {
 	return false
 }
 
-// EnsureClaudeNotificationsApp is a no-op on Linux.
-func EnsureClaudeNotificationsApp() error {
+// EnsureAgentNotificationsApp is a no-op on Linux.
+func EnsureAgentNotificationsApp() error {
 	return nil
 }
 

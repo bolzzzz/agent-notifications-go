@@ -8,14 +8,14 @@ Update the version string in **3 files** (4 occurrences total):
 
 | File | Location | Count |
 |------|----------|-------|
-| `cmd/claude-notifications/main.go` | `const version = "X.Y.Z"` | 1 |
+| `cmd/agent-notifications/main.go` | `const version = "X.Y.Z"` | 1 |
 | `.claude-plugin/plugin.json` | `"version": "X.Y.Z"` | 1 |
 | `.claude-plugin/marketplace.json` | `"version": "X.Y.Z"` | 2 |
 
 Quick check — all occurrences should match:
 
 ```bash
-grep -rn '1\.[0-9]\+\.[0-9]\+' cmd/claude-notifications/main.go .claude-plugin/plugin.json .claude-plugin/marketplace.json
+grep -rn '1\.[0-9]\+\.[0-9]\+' cmd/agent-notifications/main.go .claude-plugin/plugin.json .claude-plugin/marketplace.json
 ```
 
 ## 2. Update CHANGELOG.md
@@ -68,20 +68,20 @@ git push origin --tags
 
 The `release.yml` workflow triggers on tag push and builds binaries for all platforms automatically.
 
-Verify at: https://github.com/777genius/claude-notifications-go/releases
+Verify at: https://github.com/777genius/agent-notifications-go/releases
 
-## ClaudeNotifier.app (macOS)
+## AgentNotifier.app (macOS)
 
-ClaudeNotifier.app is **automatically built, signed, and notarized** by the `release.yml`
+AgentNotifier.app is **automatically built, signed, and notarized** by the `release.yml`
 workflow as a `build-notifier` job. It runs in parallel with Go binary builds and the
-resulting `ClaudeNotifier.app.zip` is included in the same GitHub Release.
+resulting `AgentNotifier.app.zip` is included in the same GitHub Release.
 
 The CI workflow:
 1. Imports the Apple Developer certificate from GitHub Secrets
 2. Builds a universal binary (arm64 + x86_64)
 3. Signs with **Developer ID Application** + hardened runtime
 4. Notarizes via `xcrun notarytool` and staples the ticket
-5. Uploads `ClaudeNotifier.app.zip` as a release asset
+5. Uploads `AgentNotifier.app.zip` as a release asset
 
 ### Required GitHub Secrets
 
@@ -118,9 +118,9 @@ Description of what was added and why.
 
 ---
 
-📦 **[Installation](https://github.com/777genius/claude-notifications-go#installation)** · 🔄 **[Updating](https://github.com/777genius/claude-notifications-go#updating)**
+📦 **[Installation](https://github.com/777genius/agent-notifications-go#installation)** · 🔄 **[Updating](https://github.com/777genius/agent-notifications-go#updating)**
 
-**Full Changelog**: https://github.com/777genius/claude-notifications-go/compare/vPREV...vX.Y.Z
+**Full Changelog**: https://github.com/777genius/agent-notifications-go/compare/vPREV...vX.Y.Z
 NOTES_EOF
 )"
 ```
@@ -130,8 +130,8 @@ NOTES_EOF
 Comment on fixed issues and merged PRs with a link to the release:
 
 ```bash
-gh issue comment N --body "Fixed in [vX.Y.Z](https://github.com/777genius/claude-notifications-go/releases/tag/vX.Y.Z)."
-gh pr comment N --body "Released in [vX.Y.Z](https://github.com/777genius/claude-notifications-go/releases/tag/vX.Y.Z)."
+gh issue comment N --body "Fixed in [vX.Y.Z](https://github.com/777genius/agent-notifications-go/releases/tag/vX.Y.Z)."
+gh pr comment N --body "Released in [vX.Y.Z](https://github.com/777genius/agent-notifications-go/releases/tag/vX.Y.Z)."
 ```
 
 ## How auto-update works
@@ -142,4 +142,4 @@ Users don't need to manually download binaries after a plugin update:
 2. This updates `plugin.json` with the new version
 3. On the next hook invocation, `bin/hook-wrapper.sh` compares the installed binary version with `plugin.json`
 4. If versions differ, it runs `install.sh --force` to download the matching binary from GitHub Releases
-5. User sees a `[claude-notifications] Updated to vX.Y.Z` message
+5. User sees a `[agent-notifications] Updated to vX.Y.Z` message

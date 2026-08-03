@@ -290,7 +290,7 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 	// Create notification with click action
 	appName := req.AppName
 	if appName == "" {
-		appName = "claude-notifications"
+		appName = "agent-notifications"
 	}
 	n := notify.Notification{
 		AppName:       appName,

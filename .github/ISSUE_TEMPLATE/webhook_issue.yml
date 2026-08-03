@@ -96,7 +96,7 @@ body:
       description: |
         Any error output when running manually:
         ```
-        echo '{}' | ~/.claude/claude-notifications-go/bin/claude-notifications handle-hook Stop
+        echo '{}' | ~/.claude/agent-notifications-go/bin/agent-notifications handle-hook Stop
         ```
       render: shell
     validations:

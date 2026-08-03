@@ -79,17 +79,17 @@ type PingResponse struct {
 func GetSocketPath() string {
 	// Prefer XDG_RUNTIME_DIR (usually /run/user/1000)
 	if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
-		return filepath.Join(runtimeDir, "claude-notifications.sock")
+		return filepath.Join(runtimeDir, "agent-notifications.sock")
 	}
 
 	// Fallback to /tmp with UID for isolation
-	return fmt.Sprintf("/tmp/claude-notifications-%d.sock", os.Getuid())
+	return fmt.Sprintf("/tmp/agent-notifications-%d.sock", os.Getuid())
 }
 
 // GetPidFilePath returns the path to the daemon's PID file.
 func GetPidFilePath() string {
 	if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
-		return filepath.Join(runtimeDir, "claude-notifications.pid")
+		return filepath.Join(runtimeDir, "agent-notifications.pid")
 	}
-	return fmt.Sprintf("/tmp/claude-notifications-%d.pid", os.Getuid())
+	return fmt.Sprintf("/tmp/agent-notifications-%d.pid", os.Getuid())
 }

@@ -243,14 +243,14 @@ func TestGetAppID_EmptyString(t *testing.T) {
 	}
 }
 
-func TestGetNotificationDesktopEntryID_GnomeWaylandUsesClaudeDesktopFile(t *testing.T) {
+func TestGetNotificationDesktopEntryID_GnomeWaylandUsesAgentDesktopFile(t *testing.T) {
 	restore := saveTerminalEnv(t)
 	defer restore()
 
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_SESSION_TYPE", "wayland")
 	t.Setenv("XDG_CURRENT_DESKTOP", "ubuntu:GNOME")
-	desktopFile := getClaudeNotificationsDesktopEntryPath()
+	desktopFile := getAgentNotificationsDesktopEntryPath()
 	if err := os.MkdirAll(filepath.Dir(desktopFile), 0o755); err != nil {
 		t.Fatalf("MkdirAll failed: %v", err)
 	}
@@ -258,8 +258,8 @@ func TestGetNotificationDesktopEntryID_GnomeWaylandUsesClaudeDesktopFile(t *test
 		t.Fatalf("WriteFile failed: %v", err)
 	}
 
-	if got := GetNotificationDesktopEntryID("code"); got != claudeNotificationsDesktopEntryID {
-		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, claudeNotificationsDesktopEntryID)
+	if got := GetNotificationDesktopEntryID("code"); got != agentNotificationsDesktopEntryID {
+		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, agentNotificationsDesktopEntryID)
 	}
 }
 
@@ -270,7 +270,7 @@ func TestGetNotificationDesktopEntryID_GnomeWaylandViaSessionDesktop(t *testing.
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_SESSION_TYPE", "wayland")
 	t.Setenv("XDG_SESSION_DESKTOP", "gnome")
-	desktopFile := getClaudeNotificationsDesktopEntryPath()
+	desktopFile := getAgentNotificationsDesktopEntryPath()
 	if err := os.MkdirAll(filepath.Dir(desktopFile), 0o755); err != nil {
 		t.Fatalf("MkdirAll failed: %v", err)
 	}
@@ -278,8 +278,8 @@ func TestGetNotificationDesktopEntryID_GnomeWaylandViaSessionDesktop(t *testing.
 		t.Fatalf("WriteFile failed: %v", err)
 	}
 
-	if got := GetNotificationDesktopEntryID("gnome-terminal"); got != claudeNotificationsDesktopEntryID {
-		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, claudeNotificationsDesktopEntryID)
+	if got := GetNotificationDesktopEntryID("gnome-terminal"); got != agentNotificationsDesktopEntryID {
+		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, agentNotificationsDesktopEntryID)
 	}
 }
 

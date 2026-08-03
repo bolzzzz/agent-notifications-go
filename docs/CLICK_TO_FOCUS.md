@@ -4,7 +4,7 @@ Clicking a notification activates your terminal window — no more hunting for t
 
 ## Configuration
 
-In `~/.claude/claude-notifications-go/config.json`:
+In `~/.claude/agent-notifications-go/config.json`:
 
 ```json
 {
@@ -24,7 +24,7 @@ In `~/.claude/claude-notifications-go/config.json`:
 
 ## macOS
 
-Auto-detects your terminal via `TERM_PROGRAM` / `__CFBundleIdentifier`. Uses `terminal-notifier` (auto-installed via `/claude-notifications-go:init`).
+Auto-detects your terminal via `TERM_PROGRAM` / `__CFBundleIdentifier`. Uses `terminal-notifier` (auto-installed via `/agent-notifications-go:init`).
 
 | Terminal | Focus method |
 |----------|-------------|
@@ -103,7 +103,7 @@ focus a specific window among multiple instances of the same app.
 If Linux click-to-focus focuses the wrong window, run the diagnostic script immediately after reproducing the failed click:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/scripts/linux-focus-debug.sh | bash
+curl -fsSL https://raw.githubusercontent.com/777genius/agent-notifications-go/main/scripts/linux-focus-debug.sh | bash
 ```
 
 It writes a report file in the current directory with:
@@ -130,8 +130,8 @@ When using iTerm2's tmux integration (`tmux -CC`), standard `tmux select-window`
 
 **Manual setup** (if automatic setup failed):
 ```bash
-python3 -m venv ~/.claude/claude-notifications-go/iterm2-venv
-~/.claude/claude-notifications-go/iterm2-venv/bin/pip install iterm2
+python3 -m venv ~/.claude/agent-notifications-go/iterm2-venv
+~/.claude/agent-notifications-go/iterm2-venv/bin/pip install iterm2
 ```
 
 **Diagnostics:**
@@ -140,7 +140,7 @@ python3 -m venv ~/.claude/claude-notifications-go/iterm2-venv
 echo "$CLAUDE_PLUGIN_ROOT"
 
 # List all iTerm2 tabs with tmux pane mappings
-~/.claude/claude-notifications-go/iterm2-venv/bin/python3 \
+~/.claude/agent-notifications-go/iterm2-venv/bin/python3 \
   "$CLAUDE_PLUGIN_ROOT/scripts/iterm2-select-tab.py" --list
 ```
 
@@ -153,7 +153,7 @@ Clicking a notification raises the terminal **window** that started the task. En
 How it works (no admin rights, no COM server):
 
 1. When the notification fires, the plugin walks up the process tree to the terminal window hosting Claude (Windows Terminal, VS Code, conhost, ConEmu, …) and records its window handle, PID, title and project folder.
-2. The toast is shown via [go-toast](https://git.sr.ht/~jackmordaunt/go-toast) with **protocol activation**, carrying that context in a `claude-notify-focus:` URI. A per-user handler for that scheme is registered under `HKCU\Software\Classes` (idempotent; refreshed if the binary moves).
+2. The toast is shown via [go-toast](https://git.sr.ht/~jackmordaunt/go-toast) with **protocol activation**, carrying that context in a `agent-notify-focus:` URI. A per-user handler for that scheme is registered under `HKCU\Software\Classes` (idempotent; refreshed if the binary moves).
 3. Clicking the toast launches the URI, which re-runs the binary's `focus-windows` subcommand. It re-finds the window (by handle, then PID, then title/folder) and raises it with `ShowWindow` + `SetForegroundWindow`.
 
 ### Scope: window-level only

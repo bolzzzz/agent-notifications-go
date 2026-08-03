@@ -53,10 +53,10 @@ jobs:
         shell: bash
 
       - name: Build binary
-        run: go build -o bin/claude-notifications.exe ./cmd/claude-notifications
+        run: go build -o bin/agent-notifications.exe ./cmd/agent-notifications
 
       - name: Test binary execution (help)
-        run: ./bin/claude-notifications.exe help
+        run: ./bin/agent-notifications.exe help
         shell: bash
 
       - name: Build sound preview binary

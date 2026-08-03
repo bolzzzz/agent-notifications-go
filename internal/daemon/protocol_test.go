@@ -17,7 +17,7 @@ func TestGetSocketPath_WithXDGRuntimeDir(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "/run/user/1000")
 
 	result := GetSocketPath()
-	expected := filepath.Join("/run/user/1000", "claude-notifications.sock")
+	expected := filepath.Join("/run/user/1000", "agent-notifications.sock")
 	if result != expected {
 		t.Errorf("GetSocketPath() = %q, want %q", result, expected)
 	}
@@ -30,7 +30,7 @@ func TestGetSocketPath_WithoutXDGRuntimeDir(t *testing.T) {
 	}
 
 	result := GetSocketPath()
-	expected := fmt.Sprintf("/tmp/claude-notifications-%d.sock", os.Getuid())
+	expected := fmt.Sprintf("/tmp/agent-notifications-%d.sock", os.Getuid())
 	if result != expected {
 		t.Errorf("GetSocketPath() = %q, want %q", result, expected)
 	}
@@ -68,7 +68,7 @@ func TestGetPidFilePath_WithXDGRuntimeDir(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "/run/user/1000")
 
 	result := GetPidFilePath()
-	expected := filepath.Join("/run/user/1000", "claude-notifications.pid")
+	expected := filepath.Join("/run/user/1000", "agent-notifications.pid")
 	if result != expected {
 		t.Errorf("GetPidFilePath() = %q, want %q", result, expected)
 	}
@@ -81,7 +81,7 @@ func TestGetPidFilePath_WithoutXDGRuntimeDir(t *testing.T) {
 	}
 
 	result := GetPidFilePath()
-	expected := fmt.Sprintf("/tmp/claude-notifications-%d.pid", os.Getuid())
+	expected := fmt.Sprintf("/tmp/agent-notifications-%d.pid", os.Getuid())
 	if result != expected {
 		t.Errorf("GetPidFilePath() = %q, want %q", result, expected)
 	}

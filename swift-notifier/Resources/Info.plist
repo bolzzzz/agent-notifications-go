@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.claude.desktop.notifier</string>
+    <string>com.agent-notifications.notifier</string>
     <key>CFBundleExecutable</key>
     <string>terminal-notifier-modern</string>
     <key>CFBundleName</key>
-    <string>Claude Notifier</string>
+    <string>Agent Notifier</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>

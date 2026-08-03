@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
 )
 
 // Metrics tracks webhook statistics

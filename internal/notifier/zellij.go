@@ -14,7 +14,7 @@ func IsZellij() bool {
 }
 
 // getZellijPath returns the absolute path to the zellij binary.
-// ClaudeNotifier.app runs without the user's PATH, so we need the full path.
+// AgentNotifier.app runs without the user's PATH, so we need the full path.
 func getZellijPath() string {
 	if path, err := exec.LookPath("zellij"); err == nil {
 		return path

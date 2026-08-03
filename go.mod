@@ -1,4 +1,4 @@
-module github.com/777genius/claude-notifications
+module github.com/777genius/agent-notifications-go
 
 go 1.21.5
 

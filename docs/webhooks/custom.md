@@ -15,7 +15,7 @@ Custom webhooks allow you to send notifications to any HTTP endpoint that accept
 
 ### Configuration
 
-Edit `~/.claude/claude-notifications-go/config.json`:
+Edit `~/.claude/agent-notifications-go/config.json`:
 
 ```json
 {
@@ -46,7 +46,7 @@ Custom webhooks receive a JSON payload:
   "message": "[bold-cat] Created new authentication system with JWT tokens",
   "session_id": "abc-123",
   "timestamp": "2026-04-13T12:34:56Z",
-  "source": "claude-notifications",
+  "source": "agent-notifications",
   "title": "✅ Completed"
 }
 ```
@@ -56,7 +56,7 @@ Custom webhooks receive a JSON payload:
 - `message` (string) - Notification message with session name
 - `session_id` (string) - Unique session identifier
 - `timestamp` (string) - RFC3339 timestamp
-- `source` (string) - Always `claude-notifications`
+- `source` (string) - Always `agent-notifications`
 - `title` (string) - Status title from config
 
 ## Dynamic Fields
@@ -142,7 +142,7 @@ Notes:
       "format": "json",
       "headers": {
         "X-API-Key": "your-api-key-here",
-        "X-Service-Name": "claude-notifications"
+        "X-Service-Name": "agent-notifications"
       }
     }
   }
@@ -183,7 +183,7 @@ You can include multiple custom headers:
   "headers": {
     "Authorization": "Bearer YOUR_TOKEN",
     "X-API-Key": "your-api-key",
-    "X-Service-Name": "claude-notifications",
+    "X-Service-Name": "agent-notifications",
     "X-Environment": "production",
     "Content-Type": "application/json"
   }
@@ -278,7 +278,7 @@ Balanced for reliability and performance:
       "format": "json",
       "headers": {
         "Authorization": "Bearer YOUR_TOKEN",
-        "X-Service-Name": "claude-notifications",
+        "X-Service-Name": "agent-notifications",
         "X-Environment": "production"
       },
       "retry": {
@@ -309,7 +309,7 @@ _push notifications to Android/iOS/browsers/etc., FOSS_
 
 1. Install [any app](https://ntfy.sh/)
 2. Subscribe to `your_topic_name`
-3. Configure Claude Notifications:
+3. Configure Agent Notifications:
 
 ```json
 "webhook": {
@@ -333,7 +333,7 @@ You can also use ntfy <ins>as middleware transformer for other webhooks</ins> or
 
 1. Create a **Webhook by Zapier** trigger
 2. Copy the webhook URL
-3. Configure Claude Notifications:
+3. Configure Agent Notifications:
 
 ```json
 {
@@ -351,14 +351,14 @@ You can also use ntfy <ins>as middleware transformer for other webhooks</ins> or
 1. Add **Webhook** node to workflow
 2. Set method to `POST`
 3. Copy webhook URL
-4. Configure Claude Notifications with the URL
+4. Configure Agent Notifications with the URL
 
 ### Make (formerly Integromat)
 
 1. Create scenario with **Webhooks** module
 2. Add **Custom webhook**
 3. Copy webhook URL
-4. Configure Claude Notifications with the URL
+4. Configure Agent Notifications with the URL
 
 ### PagerDuty
 
@@ -405,7 +405,7 @@ Perfect for testing webhook payloads:
 
 1. Go to https://webhook.site/
 2. Copy your unique URL
-3. Configure Claude Notifications:
+3. Configure Agent Notifications:
 
 ```json
 {

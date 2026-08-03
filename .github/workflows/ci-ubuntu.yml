@@ -62,10 +62,10 @@ jobs:
           fail_ci_if_error: false
 
       - name: Build binary
-        run: go build -o bin/claude-notifications ./cmd/claude-notifications
+        run: go build -o bin/agent-notifications ./cmd/agent-notifications
 
       - name: Test binary execution (help)
-        run: ./bin/claude-notifications help
+        run: ./bin/agent-notifications help
 
       - name: Run install.sh unit tests
         run: bash bin/install_test.sh

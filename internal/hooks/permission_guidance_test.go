@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/777genius/claude-notifications/internal/notifier"
+	"github.com/777genius/agent-notifications-go/internal/notifier"
 )
 
 func captureStdout(t *testing.T, fn func()) string {
@@ -57,8 +57,8 @@ func TestMaybeEmitDesktopPermissionGuidance_RateLimited(t *testing.T) {
 	if !strings.Contains(first, "systemMessage") {
 		t.Fatalf("expected systemMessage on first permission denial, got %q", first)
 	}
-	if !strings.Contains(first, "Claude Notifier") {
-		t.Fatalf("expected Claude Notifier guidance, got %q", first)
+	if !strings.Contains(first, "Agent Notifier") {
+		t.Fatalf("expected Agent Notifier guidance, got %q", first)
 	}
 
 	second := captureStdout(t, func() {

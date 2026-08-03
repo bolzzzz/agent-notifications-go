@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in contributing to Claude Notifications!
+Thank you for your interest in contributing to Agent Notifications!
 
 ## Prerequisites
 
@@ -13,8 +13,8 @@ Thank you for your interest in contributing to Claude Notifications!
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/777genius/claude-notifications-go
-cd claude-notifications-go
+git clone https://github.com/777genius/agent-notifications-go
+cd agent-notifications-go
 make build
 ```
 
@@ -25,16 +25,16 @@ make build
 /plugin marketplace add .
 
 # Install plugin
-/plugin install claude-notifications-go@claude-notifications-go
+/plugin install agent-notifications-go@agent-notifications-go
 
 # Restart Claude Code for hooks to take effect
 
 # Download binary and configure settings
-/claude-notifications-go:init
-/claude-notifications-go:settings
+/agent-notifications-go:init
+/agent-notifications-go:settings
 ```
 
-`/claude-notifications-go:init` will use your locally built binary from `bin/` if it exists, otherwise it downloads from GitHub Releases.
+`/agent-notifications-go:init` will use your locally built binary from `bin/` if it exists, otherwise it downloads from GitHub Releases.
 
 For repeatable local install/update testing without touching your real Claude setup, use:
 
@@ -44,7 +44,7 @@ scripts/dev-local-plugin.sh bootstrap
 scripts/dev-local-plugin.sh status
 ```
 
-This uses an isolated Claude config dir under `~/.claude-dev/claude-notifications-go` by default.
+This uses an isolated Claude config dir under `~/.claude-dev/agent-notifications-go` by default.
 
 For the full local-development workflow, including real-`claude` E2E tests and switching your real Claude environment between local and remote sources, see **[docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md)**.
 
@@ -70,7 +70,7 @@ See [Architecture](docs/ARCHITECTURE.md) for a detailed overview. Key directorie
 
 | Directory | Description |
 |-----------|-------------|
-| `cmd/` | CLI entry points (`claude-notifications`, `sound-preview`, `list-devices`, `list-sounds`) |
+| `cmd/` | CLI entry points (`agent-notifications`, `sound-preview`, `list-devices`, `list-sounds`) |
 | `internal/` | Core logic (analyzer, hooks, notifier, webhook, config, audio, etc.) |
 | `pkg/jsonl/` | JSONL streaming parser |
 | `commands/` | Plugin skill definitions (`.md` files) |
@@ -170,4 +170,4 @@ See **[Release Checklist](docs/RELEASE.md)** for the full step-by-step guide.
 
 ## Reporting Issues
 
-Found a bug or have a feature request? [Open an issue](https://github.com/777genius/claude-notifications-go/issues).
+Found a bug or have a feature request? [Open an issue](https://github.com/777genius/agent-notifications-go/issues).

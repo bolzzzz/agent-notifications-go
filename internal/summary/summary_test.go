@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/pkg/jsonl"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/pkg/jsonl"
 )
 
 func TestFormatDuration(t *testing.T) {

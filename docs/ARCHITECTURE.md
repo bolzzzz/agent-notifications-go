@@ -2,14 +2,14 @@
 
 ## Overview
 
-This is a professional Go rewrite of the claude-notifications plugin. The architecture follows clean architecture principles with clear separation of concerns and testability.
+This is a professional Go rewrite of the agent-notifications plugin. The architecture follows clean architecture principles with clear separation of concerns and testability.
 
 ## Directory Structure
 
 ```
 notification_plugin_go/
 ├── cmd/
-│   └── claude-notifications/     # CLI entry point
+│   └── agent-notifications/     # CLI entry point
 │       └── main.go                # Main executable
 ├── internal/                      # Private application code
 │   ├── config/                    # Configuration management
@@ -35,7 +35,7 @@ notification_plugin_go/
 ├── pkg/                           # Public libraries
 │   └── jsonl/                     # JSONL parser
 │       └── jsonl.go               # Streaming JSONL parser
-├── config/                        # Legacy config location (migrated to ~/.claude/claude-notifications-go/)
+├── config/                        # Legacy config location (migrated to ~/.claude/agent-notifications-go/)
 │   └── config.json                # Legacy config (auto-migrated to stable path)
 ├── hooks/                         # Claude Code hooks
 │   └── hooks.json                 # Hook definitions
@@ -43,7 +43,7 @@ notification_plugin_go/
 │   ├── plugin.json                # Plugin manifest
 │   └── marketplace.json           # Marketplace definition
 └── bin/                           # Compiled binaries
-    └── claude-notifications       # Main executable
+    └── agent-notifications       # Main executable
 ```
 
 ## Core Components
@@ -214,7 +214,7 @@ ELSE:
   "message": "...",
   "timestamp": "2025-10-18T12:34:56Z",
   "session_id": "abc-123",
-  "source": "claude-notifications"
+  "source": "agent-notifications"
 }
 ```
 

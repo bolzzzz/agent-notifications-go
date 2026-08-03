@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/777genius/claude-notifications/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/config"
 )
 
 func TestSendWithTerminalNotifier_Integration(t *testing.T) {
@@ -16,12 +16,12 @@ func TestSendWithTerminalNotifier_Integration(t *testing.T) {
 		t.Skip("Skipping in CI - no NotificationCenter available")
 	}
 
-	// Prefer ClaudeNotifier.app if built
-	cleanup, ok := setupClaudeNotifierEnv(t)
+	// Prefer AgentNotifier.app if built
+	cleanup, ok := setupAgentNotifierEnv(t)
 	defer cleanup()
 	if !ok {
 		if !IsTerminalNotifierAvailable() {
-			t.Skip("Neither ClaudeNotifier.app nor terminal-notifier available")
+			t.Skip("Neither AgentNotifier.app nor terminal-notifier available")
 		}
 	}
 
@@ -40,12 +40,12 @@ func TestSendWithTerminalNotifier_Integration(t *testing.T) {
 }
 
 func TestTerminalNotifier_CommandExecution(t *testing.T) {
-	// Prefer ClaudeNotifier.app if built
-	cleanup, ok := setupClaudeNotifierEnv(t)
+	// Prefer AgentNotifier.app if built
+	cleanup, ok := setupAgentNotifierEnv(t)
 	defer cleanup()
 	if !ok {
 		if _, err := GetTerminalNotifierPath(); err != nil {
-			t.Skip("Neither ClaudeNotifier.app nor terminal-notifier available")
+			t.Skip("Neither AgentNotifier.app nor terminal-notifier available")
 		}
 	}
 

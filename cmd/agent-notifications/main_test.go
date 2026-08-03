@@ -88,9 +88,9 @@ func TestLazyUpdateQuoting(t *testing.T) {
 }
 
 func TestNewExecHookUsesArgsWithoutShell(t *testing.T) {
-	hook := newExecHook(`C:\Tools\claude-notifications.exe`, "Stop")
+	hook := newExecHook(`C:\Tools\agent-notifications.exe`, "Stop")
 
-	if hook.Command != `C:\Tools\claude-notifications.exe` {
+	if hook.Command != `C:\Tools\agent-notifications.exe` {
 		t.Fatalf("newExecHook command = %q", hook.Command)
 	}
 	if want := []string{"handle-hook", "Stop"}; !reflect.DeepEqual(hook.Args, want) {
@@ -102,7 +102,7 @@ func TestNewExecHookUsesArgsWithoutShell(t *testing.T) {
 }
 
 func TestWindowsHookSettingsUseExecFormForAllHooks(t *testing.T) {
-	settings := newWindowsHookSettings(`C:\Tools\claude-notifications-windows-amd64.exe`)
+	settings := newWindowsHookSettings(`C:\Tools\agent-notifications-windows-amd64.exe`)
 	expected := map[string]string{
 		"PreToolUse":   "PreToolUse",
 		"Notification": "Notification",
@@ -121,7 +121,7 @@ func TestWindowsHookSettingsUseExecFormForAllHooks(t *testing.T) {
 		}
 
 		hook := groups[0].Hooks[0]
-		if hook.Command != `C:\Tools\claude-notifications-windows-amd64.exe` {
+		if hook.Command != `C:\Tools\agent-notifications-windows-amd64.exe` {
 			t.Fatalf("%s command = %q", hookEvent, hook.Command)
 		}
 		if want := []string{"handle-hook", expectedArg}; !reflect.DeepEqual(hook.Args, want) {
@@ -137,7 +137,7 @@ func TestWindowsHookSettingsUseExecFormForAllHooks(t *testing.T) {
 }
 
 func TestWindowsHookSettingsJSONHasNoShellSyntax(t *testing.T) {
-	data, err := json.Marshal(newWindowsHookSettings(`C:\Tools\claude-notifications-windows-amd64.exe`))
+	data, err := json.Marshal(newWindowsHookSettings(`C:\Tools\agent-notifications-windows-amd64.exe`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestWindowsHookSettingsJSONHasNoShellSyntax(t *testing.T) {
 }
 
 func TestWindowsHookSettingsPreserveSpecialPathChars(t *testing.T) {
-	exePath := `C:\Users\O'Brien\A $pecial Dir\claude-notifications-windows-amd64.exe`
+	exePath := `C:\Users\O'Brien\A $pecial Dir\agent-notifications-windows-amd64.exe`
 	settings := newWindowsHookSettings(exePath)
 	hook := settings.Hooks["Stop"][0].Hooks[0]
 

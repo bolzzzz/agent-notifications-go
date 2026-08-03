@@ -17,7 +17,7 @@ func getiTerm2PythonEnv() (pythonPath string, scriptPath string, ok bool) {
 	}
 
 	pythonPath = filepath.Join(homeDir, ".claude",
-		"claude-notifications-go", "iterm2-venv", "bin", "python3")
+		"agent-notifications-go", "iterm2-venv", "bin", "python3")
 	if _, err := os.Stat(pythonPath); err != nil {
 		return "", "", false
 	}

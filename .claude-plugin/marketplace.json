@@ -1,5 +1,5 @@
 {
-    "name": "claude-notifications-go",
+    "name": "agent-notifications-go",
     "owner": {
         "name": "777genius",
         "email": "iliyazelenkog@gmail.com"
@@ -9,7 +9,7 @@
         "version": "1.40.1"
     },
     "plugins": [{
-        "name": "claude-notifications-go",
+        "name": "agent-notifications-go",
         "source": "./",
         "description": "Smart notifications for Claude Code task statuses (Go implementation)",
         "version": "1.40.1",
@@ -17,7 +17,7 @@
             "name": "777genius",
             "email": "iliyazelenkog@gmail.com"
         },
-        "repository": "https://github.com/777genius/claude-notifications-go",
+        "repository": "https://github.com/777genius/agent-notifications-go",
         "license": "GPL-3.0",
         "keywords": [
             "notifications",

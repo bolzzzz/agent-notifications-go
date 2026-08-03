@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/internal/errorhandler"
-	"github.com/777genius/claude-notifications/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/errorhandler"
+	"github.com/777genius/agent-notifications-go/internal/logging"
 	"github.com/google/uuid"
 )
 
@@ -223,7 +223,7 @@ func (s *Sender) buildCustomPayload(runtimeCtx *runtimeContext, format string) (
 		"message":    sendCtx.Message,
 		"timestamp":  runtimeCtx.now.Format(time.RFC3339),
 		"session_id": sendCtx.SessionID,
-		"source":     "claude-notifications",
+		"source":     "agent-notifications",
 		"title":      runtimeCtx.statusInfo.Title,
 	}
 
@@ -263,7 +263,7 @@ func (s *Sender) sendHTTPRequest(ctx context.Context, requestID, url string, pay
 
 	// Set headers
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("User-Agent", "claude-notifications/1.0")
+	req.Header.Set("User-Agent", "agent-notifications/1.0")
 	req.Header.Set("X-Request-ID", requestID)
 
 	// Set custom headers

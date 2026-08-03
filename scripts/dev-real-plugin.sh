@@ -7,16 +7,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-MARKETPLACE_NAME="claude-notifications-go"
-PLUGIN_NAME="claude-notifications-go"
+MARKETPLACE_NAME="agent-notifications-go"
+PLUGIN_NAME="agent-notifications-go"
 PLUGIN_KEY="${PLUGIN_NAME}@${MARKETPLACE_NAME}"
-REMOTE_REPO="777genius/claude-notifications-go"
+REMOTE_REPO="777genius/agent-notifications-go"
 
 REAL_CLAUDE_HOME="${REAL_CLAUDE_HOME:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}"
 
 KNOWN_MARKETPLACES_JSON="${REAL_CLAUDE_HOME}/plugins/known_marketplaces.json"
 INSTALLED_JSON="${REAL_CLAUDE_HOME}/plugins/installed_plugins.json"
-BACKUP_FILE="${REAL_CLAUDE_HOME}/claude-notifications-go/dev-real-switch-backup.json"
+BACKUP_FILE="${REAL_CLAUDE_HOME}/agent-notifications-go/dev-real-switch-backup.json"
 
 print_help() {
     cat <<EOF

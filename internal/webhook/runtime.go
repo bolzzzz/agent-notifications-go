@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/internal/logging"
-	"github.com/777genius/claude-notifications/internal/platform"
-	"github.com/777genius/claude-notifications/internal/sessionname"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/platform"
+	"github.com/777genius/agent-notifications-go/internal/sessionname"
 )
 
 var templatePattern = regexp.MustCompile(`\$\{\{\s*([^{}]+?)\s*\}\}`)
@@ -191,7 +191,7 @@ func (c *runtimeContext) lookupTemplateValue(token string) (interface{}, bool, e
 		}
 		return sessionname.GenerateSessionLabel(c.sendCtx.SessionID), true, nil
 	case "source":
-		return "claude-notifications", true, nil
+		return "agent-notifications", true, nil
 	case "cwd":
 		return c.sendCtx.CWD, true, nil
 	case "folder":

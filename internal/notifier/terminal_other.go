@@ -5,7 +5,7 @@ package notifier
 import (
 	"fmt"
 
-	"github.com/777genius/claude-notifications/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/config"
 	"github.com/gen2brain/beeep"
 )
 
@@ -26,8 +26,8 @@ func IsTerminalNotifierAvailable() bool {
 	return false
 }
 
-// EnsureClaudeNotificationsApp is a no-op on non-macOS platforms.
-func EnsureClaudeNotificationsApp() error {
+// EnsureAgentNotificationsApp is a no-op on non-macOS platforms.
+func EnsureAgentNotificationsApp() error {
 	return nil
 }
 

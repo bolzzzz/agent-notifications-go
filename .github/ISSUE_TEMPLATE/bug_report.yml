@@ -15,9 +15,9 @@ body:
       description: |
         Run this to find your version:
         ```
-        cat ~/.claude/settings.json | grep claude-notifications-go
+        cat ~/.claude/settings.json | grep agent-notifications-go
         ```
-        Or check `~/.claude/claude-notifications-go/bin/` for the binary version.
+        Or check `~/.claude/agent-notifications-go/bin/` for the binary version.
       placeholder: "e.g. 1.36.0"
     validations:
       required: true
@@ -152,7 +152,7 @@ body:
       description: |
         Share your config if relevant (remove webhook URLs/tokens!):
         ```
-        cat ~/.claude/claude-notifications-go/config.json
+        cat ~/.claude/agent-notifications-go/config.json
         ```
       render: json
     validations:
@@ -179,7 +179,7 @@ body:
         Any error messages, terminal output, or logs that could help.
         Run a hook manually to see errors:
         ```
-        echo '{}' | ~/.claude/claude-notifications-go/bin/claude-notifications handle-hook Stop
+        echo '{}' | ~/.claude/agent-notifications-go/bin/agent-notifications handle-hook Stop
         ```
       render: shell
     validations:

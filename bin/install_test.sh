@@ -74,9 +74,9 @@ detect_platform() {
     esac
 
     if [ "$PLATFORM" = "windows" ]; then
-        BINARY_NAME="claude-notifications-${PLATFORM}-${ARCH}.exe"
+        BINARY_NAME="agent-notifications-${PLATFORM}-${ARCH}.exe"
     else
-        BINARY_NAME="claude-notifications-${PLATFORM}-${ARCH}"
+        BINARY_NAME="agent-notifications-${PLATFORM}-${ARCH}"
     fi
 }
 
@@ -173,13 +173,13 @@ echo "--- Test: Wrapper script exists ---"
 if [ "$PLATFORM" = "windows" ]; then
     # On Windows, wrapper is a .bat file (may not exist until install.sh is run)
     # Skip this test on Windows CI where install.sh hasn't been run
-    if [ -f "${SCRIPT_DIR}/claude-notifications.bat" ]; then
-        assert_file_exists "${SCRIPT_DIR}/claude-notifications.bat" "Wrapper script should exist (.bat)"
+    if [ -f "${SCRIPT_DIR}/agent-notifications.bat" ]; then
+        assert_file_exists "${SCRIPT_DIR}/agent-notifications.bat" "Wrapper script should exist (.bat)"
     else
         echo -e "${YELLOW}SKIP${NC}: Wrapper script test (install.sh not run yet)"
     fi
 else
-    assert_file_exists "${SCRIPT_DIR}/claude-notifications" "Wrapper script should exist"
+    assert_file_exists "${SCRIPT_DIR}/agent-notifications" "Wrapper script should exist"
 fi
 echo ""
 
@@ -193,12 +193,12 @@ for combo in "${platforms[@]}"; do
     arch=$(echo "$combo" | cut -d'-' -f2)
 
     if [ "$platform" = "windows" ]; then
-        expected_name="claude-notifications-${platform}-${arch}.exe"
+        expected_name="agent-notifications-${platform}-${arch}.exe"
     else
-        expected_name="claude-notifications-${platform}-${arch}"
+        expected_name="agent-notifications-${platform}-${arch}"
     fi
 
-    if [[ "$expected_name" == "claude-notifications-"* ]]; then
+    if [[ "$expected_name" == "agent-notifications-"* ]]; then
         echo -e "${GREEN}PASS${NC}: $combo -> $expected_name"
         TESTS_PASSED=$((TESTS_PASSED + 1))
     else
@@ -223,7 +223,7 @@ echo ""
 
 # Test 8: GitHub repo URL format
 echo "--- Test: GitHub Repo URL ---"
-repo="777genius/claude-notifications-go"
+repo="777genius/agent-notifications-go"
 release_url="https://github.com/${repo}/releases/latest/download"
 
 if [[ "$release_url" == "https://github.com/"* ]] && [[ "$release_url" == *"/releases/"* ]]; then

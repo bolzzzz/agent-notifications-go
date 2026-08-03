@@ -13,7 +13,7 @@ Telegram integration uses the Bot API to send HTML-formatted messages directly t
 1. Open Telegram and search for **@BotFather**
 2. Start a chat and send `/newbot`
 3. Follow the prompts:
-   - **Bot name:** Choose a display name (e.g., "Claude Notifications")
+   - **Bot name:** Choose a display name (e.g., "Agent Notifications")
    - **Username:** Choose a unique username ending in `bot` (e.g., `claude_notify_bot`)
 4. BotFather will give you an **API token** like:
    ```
@@ -61,7 +61,7 @@ Telegram integration uses the Bot API to send HTML-formatted messages directly t
 
 ### Step 3: Configure Plugin
 
-Edit `~/.claude/claude-notifications-go/config.json`:
+Edit `~/.claude/agent-notifications-go/config.json`:
 
 ```json
 {
@@ -84,7 +84,7 @@ Edit `~/.claude/claude-notifications-go/config.json`:
 
 ```bash
 echo '{"session_id":"test","tool_name":"ExitPlanMode"}' | \
-  bin/claude-notifications handle-hook PreToolUse
+  bin/agent-notifications handle-hook PreToolUse
 ```
 
 Check your Telegram chat for the notification!
@@ -227,7 +227,7 @@ Configure rate limiting:
 
 ## Best Practices
 
-1. **Dedicated bot** - Create a separate bot for Claude notifications
+1. **Dedicated bot** - Create a separate bot for Agent Notifications
 2. **Secure token** - Never commit bot token to git
 3. **Private chats** - Use personal chat or private groups for sensitive notifications
 4. **Enable retry** - Telegram is reliable but network issues can occur

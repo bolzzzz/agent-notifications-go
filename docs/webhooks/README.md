@@ -8,7 +8,7 @@ Send Claude Code notifications to Slack, Discord, Telegram, Lark/Feishu, or cust
 
 ### 1. Enable Webhooks
 
-Edit `~/.claude/claude-notifications-go/config.json`:
+Edit `~/.claude/agent-notifications-go/config.json`:
 
 ```json
 {
@@ -26,13 +26,13 @@ Edit `~/.claude/claude-notifications-go/config.json`:
 
 ```bash
 echo '{"session_id":"test","tool_name":"ExitPlanMode"}' | \
-  bin/claude-notifications handle-hook PreToolUse
+  bin/agent-notifications handle-hook PreToolUse
 ```
 
 ### Per-Status Webhook Control
 
 If you want desktop notifications for a status but do not want webhook noise,
-use a per-status webhook override in `~/.claude/claude-notifications-go/config.json`:
+use a per-status webhook override in `~/.claude/agent-notifications-go/config.json`:
 
 ```json
 {
@@ -118,7 +118,7 @@ The system automatically detects and formats these statuses:
 ## Support
 
 For issues, questions, or contributions:
-- GitHub Issues: https://github.com/777genius/claude-notifications-go/issues
+- GitHub Issues: https://github.com/777genius/agent-notifications-go/issues
 - Main Documentation: [README.md](../../README.md)
 
 ---

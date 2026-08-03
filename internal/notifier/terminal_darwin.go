@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/internal/platform"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/platform"
 )
 
 // terminalBundleIDMap maps TERM_PROGRAM values to macOS bundle identifiers
@@ -101,18 +101,18 @@ func GetTerminalNotifierPath() (string, error) {
 	pluginRoot := os.Getenv("CLAUDE_PLUGIN_ROOT")
 
 	if pluginRoot != "" {
-		// 1. Check ClaudeNotifier (preferred — modern UNUserNotificationCenter with Claude icon)
+		// 1. Check AgentNotifier (preferred — modern UNUserNotificationCenter with Claude icon)
 		modernPath := filepath.Join(pluginRoot, "bin",
-			"ClaudeNotifier.app", "Contents", "MacOS", "terminal-notifier-modern")
+			"AgentNotifier.app", "Contents", "MacOS", "terminal-notifier-modern")
 		if platform.FileExists(modernPath) {
 			return modernPath, nil
 		}
 
 		// Development checkout fallback: make build-notifier writes the bundle to
-		// swift-notifier/ClaudeNotifier.app, while plugin-dir runs set
+		// swift-notifier/AgentNotifier.app, while plugin-dir runs set
 		// CLAUDE_PLUGIN_ROOT to the repo root.
 		devPath := filepath.Join(pluginRoot, "swift-notifier",
-			"ClaudeNotifier.app", "Contents", "MacOS", "terminal-notifier-modern")
+			"AgentNotifier.app", "Contents", "MacOS", "terminal-notifier-modern")
 		if platform.FileExists(devPath) {
 			return devPath, nil
 		}
@@ -130,7 +130,7 @@ func GetTerminalNotifierPath() (string, error) {
 		return path, nil
 	}
 
-	return "", fmt.Errorf("terminal-notifier not found: run /claude-notifications-go:init to install")
+	return "", fmt.Errorf("terminal-notifier not found: run /agent-notifications-go:init to install")
 }
 
 // IsTerminalNotifierAvailable checks if terminal-notifier is available
@@ -139,16 +139,16 @@ func IsTerminalNotifierAvailable() bool {
 	return err == nil
 }
 
-// EnsureClaudeNotificationsApp creates ClaudeNotifications.app if it doesn't exist.
+// EnsureAgentNotificationsApp creates AgentNotifications.app if it doesn't exist.
 // This allows the notification icon to work even when users update the plugin
-// without running /claude-notifications-go:notifications-init.
-func EnsureClaudeNotificationsApp() error {
+// without running /agent-notifications-go:notifications-init.
+func EnsureAgentNotificationsApp() error {
 	pluginRoot := os.Getenv("CLAUDE_PLUGIN_ROOT")
 	if pluginRoot == "" {
 		return fmt.Errorf("CLAUDE_PLUGIN_ROOT not set")
 	}
 
-	appDir := filepath.Join(pluginRoot, "bin", "ClaudeNotifications.app")
+	appDir := filepath.Join(pluginRoot, "bin", "AgentNotifications.app")
 
 	// Already exists
 	if platform.FileExists(filepath.Join(appDir, "Contents", "Info.plist")) {
@@ -217,7 +217,7 @@ func EnsureClaudeNotificationsApp() error {
     <key>CFBundleIdentifier</key>
     <string>com.claude.notifications</string>
     <key>CFBundleName</key>
-    <string>Claude Notifications</string>
+    <string>Agent Notifications</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/777genius/claude-notifications/internal/errorhandler"
-	"github.com/777genius/claude-notifications/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/errorhandler"
+	"github.com/777genius/agent-notifications-go/internal/logging"
 )
 
 // Example demonstrates the error handler usage with console output
@@ -35,10 +35,10 @@ func Example() {
 		fmt.Println("Safe execution")
 	})
 
-	// Output will be in console with [claude-notifications] prefix:
-	// [claude-notifications] [timestamp] [ERROR] Failed to connect to webhook: connection timeout
-	// [claude-notifications] [timestamp] [INFO] Notification sent successfully
-	// [claude-notifications] [timestamp] [WARN] Rate limit at 80% capacity
+	// Output will be in console with [agent-notifications] prefix:
+	// [agent-notifications] [timestamp] [ERROR] Failed to connect to webhook: connection timeout
+	// [agent-notifications] [timestamp] [INFO] Notification sent successfully
+	// [agent-notifications] [timestamp] [WARN] Rate limit at 80% capacity
 }
 
 // ExampleSafeGo demonstrates safe goroutine execution

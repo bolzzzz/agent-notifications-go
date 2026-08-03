@@ -5,7 +5,7 @@
 	linux-focus-debug
 
 # Binary names
-BINARY=claude-notifications
+BINARY=agent-notifications
 SOUND_PREVIEW=sound-preview
 LIST_SOUNDS=list-sounds
 BINARY_PATH=bin/$(BINARY)
@@ -22,7 +22,7 @@ RELEASE_FLAGS=-ldflags="-s -w -X main.gitHash=$(GIT_HASH)" -trimpath
 # Build targets
 build: ## Build the binaries (development mode with debug symbols)
 	@echo "Building $(BINARY), $(SOUND_PREVIEW) and $(LIST_SOUNDS) (development mode)..."
-	@go build $(BO_VERSION_FLAGS) -o $(BINARY_PATH) ./cmd/claude-notifications
+	@go build $(BO_VERSION_FLAGS) -o $(BINARY_PATH) ./cmd/agent-notifications
 	@go build -o $(SOUND_PREVIEW_PATH) ./cmd/sound-preview
 	@go build -o $(LIST_SOUNDS_PATH) ./cmd/list-sounds
 	@echo "Build complete! Binaries in bin/"
@@ -30,12 +30,12 @@ build: ## Build the binaries (development mode with debug symbols)
 build-all: ## Build optimized binaries for all platforms
 	@echo "Building optimized release binaries for all platforms..."
 	@mkdir -p dist
-	@echo "Building claude-notifications..."
-	@GOOS=darwin GOARCH=amd64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-darwin-amd64 ./cmd/claude-notifications
-	@GOOS=darwin GOARCH=arm64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-darwin-arm64 ./cmd/claude-notifications
-	@GOOS=linux GOARCH=amd64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-linux-amd64 ./cmd/claude-notifications
-	@GOOS=linux GOARCH=arm64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-linux-arm64 ./cmd/claude-notifications
-	@GOOS=windows GOARCH=amd64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-windows-amd64.exe ./cmd/claude-notifications
+	@echo "Building agent-notifications..."
+	@GOOS=darwin GOARCH=amd64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-darwin-amd64 ./cmd/agent-notifications
+	@GOOS=darwin GOARCH=arm64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-darwin-arm64 ./cmd/agent-notifications
+	@GOOS=linux GOARCH=amd64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-linux-amd64 ./cmd/agent-notifications
+	@GOOS=linux GOARCH=arm64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-linux-arm64 ./cmd/agent-notifications
+	@GOOS=windows GOARCH=amd64 go build $(RELEASE_FLAGS) -o dist/$(BINARY)-windows-amd64.exe ./cmd/agent-notifications
 	@echo "Building sound-preview..."
 	@GOOS=darwin GOARCH=amd64 go build $(RELEASE_FLAGS) -o dist/$(SOUND_PREVIEW)-darwin-amd64 ./cmd/sound-preview
 	@GOOS=darwin GOARCH=arm64 go build $(RELEASE_FLAGS) -o dist/$(SOUND_PREVIEW)-darwin-arm64 ./cmd/sound-preview
@@ -137,15 +137,15 @@ rebuild-and-commit: build-all ## Rebuild optimized binaries and prepare for comm
 	@echo "✓ Optimized binaries ready in bin/"
 	@echo ""
 	@echo "Platform binaries updated:"
-	@ls -1 bin/claude-notifications-* 2>/dev/null || echo "  (none found)"
+	@ls -1 bin/agent-notifications-* 2>/dev/null || echo "  (none found)"
 	@echo ""
-	@echo "To commit: git add bin/claude-notifications-* && git commit -m 'chore: rebuild binaries'"
+	@echo "To commit: git add bin/agent-notifications-* && git commit -m 'chore: rebuild binaries'"
 
 # Swift notifier (macOS only)
-build-notifier: ## Build ClaudeNotifier .app bundle (macOS)
-	@echo "Building ClaudeNotifier..."
+build-notifier: ## Build AgentNotifier .app bundle (macOS)
+	@echo "Building AgentNotifier..."
 	@cd swift-notifier && bash scripts/build-app.sh
-	@echo "Done! Bundle at swift-notifier/ClaudeNotifier.app"
+	@echo "Done! Bundle at swift-notifier/AgentNotifier.app"
 
 # Help
 help: ## Show this help message

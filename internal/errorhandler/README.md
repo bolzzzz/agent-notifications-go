@@ -14,7 +14,7 @@
 ## Инициализация
 
 ```go
-import "github.com/777genius/claude-notifications/internal/errorhandler"
+import "github.com/777genius/agent-notifications/internal/errorhandler"
 
 // Инициализация при старте приложения
 errorhandler.Init(
@@ -94,7 +94,7 @@ errorhandler.Warn("Warning: %s", warning)
 - Логирует все ошибки в файл `notification-debug.log`
 - При включённом `logToConsole` выводит логи в stderr (для ошибок/предупреждений) или stdout (для info/debug)
 - Критические ошибки всегда выводятся в stderr, даже если `logToConsole=false`
-- **Все выводы в консоль имеют префикс `[claude-notifications]` для удобной идентификации**
+- **Все выводы в консоль имеют префикс `[agent-notifications]` для удобной идентификации**
 
 ## Примеры из кода
 
@@ -143,12 +143,12 @@ go test ./internal/errorhandler/... -v
 ## Примеры вывода
 
 ### Вывод в консоль (stderr/stdout)
-Все сообщения в консоль имеют префикс `[claude-notifications]`:
+Все сообщения в консоль имеют префикс `[agent-notifications]`:
 ```
-[claude-notifications] [2025-10-19 15:30:45] [ERROR] CRITICAL ERROR - Failed to initialize logger: permission denied
-[claude-notifications] PANIC: unexpected nil pointer
-[claude-notifications] [2025-10-19 15:30:46] [INFO] Notification sent successfully
-[claude-notifications] [2025-10-19 15:30:47] [WARN] Rate limit approaching threshold
+[agent-notifications] [2025-10-19 15:30:45] [ERROR] CRITICAL ERROR - Failed to initialize logger: permission denied
+[agent-notifications] PANIC: unexpected nil pointer
+[agent-notifications] [2025-10-19 15:30:46] [INFO] Notification sent successfully
+[agent-notifications] [2025-10-19 15:30:47] [WARN] Rate limit approaching threshold
 ```
 
 ### Вывод в файл (notification-debug.log)

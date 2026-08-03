@@ -100,9 +100,9 @@ func (l *Logger) log(level, format string, args ...interface{}) {
 		// Add plugin prefix to console output for clarity
 		var consoleLine string
 		if l.prefix != "" {
-			consoleLine = fmt.Sprintf("[claude-notifications] [%s] [%s] %s: %s\n", timestamp, level, l.prefix, message)
+			consoleLine = fmt.Sprintf("[agent-notifications] [%s] [%s] %s: %s\n", timestamp, level, l.prefix, message)
 		} else {
-			consoleLine = fmt.Sprintf("[claude-notifications] [%s] [%s] %s\n", timestamp, level, message)
+			consoleLine = fmt.Sprintf("[agent-notifications] [%s] [%s] %s\n", timestamp, level, message)
 		}
 		_, _ = fmt.Fprint(consoleOutput, consoleLine)
 	}

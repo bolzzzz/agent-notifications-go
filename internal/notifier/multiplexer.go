@@ -3,7 +3,7 @@ package notifier
 import (
 	"fmt"
 
-	"github.com/777genius/claude-notifications/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/logging"
 )
 
 // multiplexerHandler describes a terminal multiplexer integration.

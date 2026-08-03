@@ -40,7 +40,7 @@ func setupFakeiTerm2Env(t *testing.T) string {
 	tmpDir := t.TempDir()
 
 	// Create fake venv with python3 binary
-	venvBin := filepath.Join(tmpDir, ".claude", "claude-notifications-go",
+	venvBin := filepath.Join(tmpDir, ".claude", "agent-notifications-go",
 		"iterm2-venv", "bin")
 	if err := os.MkdirAll(venvBin, 0o755); err != nil {
 		t.Fatalf("failed to create venv dir: %v", err)
@@ -321,7 +321,7 @@ func TestGetiTerm2PythonEnv_MissingPluginRoot(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create fake venv but do NOT set CLAUDE_PLUGIN_ROOT
-	venvBin := filepath.Join(tmpDir, ".claude", "claude-notifications-go",
+	venvBin := filepath.Join(tmpDir, ".claude", "agent-notifications-go",
 		"iterm2-venv", "bin")
 	if err := os.MkdirAll(venvBin, 0o755); err != nil {
 		t.Fatalf("failed to create venv dir: %v", err)

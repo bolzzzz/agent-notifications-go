@@ -13,7 +13,7 @@ func IsWezTerm() bool {
 }
 
 // getWezTermPath returns the absolute path to the wezterm binary.
-// ClaudeNotifier.app runs without the user's PATH, so we need the full path.
+// AgentNotifier.app runs without the user's PATH, so we need the full path.
 func getWezTermPath() string {
 	if path, err := exec.LookPath("wezterm"); err == nil {
 		return path

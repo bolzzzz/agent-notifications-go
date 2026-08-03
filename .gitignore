@@ -1,16 +1,16 @@
 # Binaries - exclude all platform-specific binaries
 # These are downloaded from GitHub Releases during setup
-bin/claude-notifications-*
+bin/agent-notifications-*
 bin/*.exe
 bin/*.dll
 bin/*.so
 bin/*.dylib
 
 # Windows wrapper (created dynamically by install.sh)
-bin/claude-notifications.bat
+bin/agent-notifications.bat
 
 # Keep these scripts in git:
-# - bin/claude-notifications (wrapper script for Unix)
+# - bin/agent-notifications (wrapper script for Unix)
 # - bin/install.sh (installer script)
 
 # Temporary build files
@@ -26,16 +26,16 @@ bin/.checksums.txt
 # macOS terminal-notifier (downloaded by install.sh for click-to-focus)
 bin/terminal-notifier.app/
 
-# macOS ClaudeNotifications.app (created by install.sh for notification icon)
-bin/ClaudeNotifications.app/
+# macOS AgentNotifications.app (created by install.sh for notification icon)
+bin/AgentNotifications.app/
 
-# macOS ClaudeNotifier (built from swift-notifier/ or downloaded by install.sh)
-bin/ClaudeNotifier.app/
+# macOS AgentNotifier (built from swift-notifier/ or downloaded by install.sh)
+bin/AgentNotifier.app/
 swift-notifier/.build/
-swift-notifier/ClaudeNotifier.app/
+swift-notifier/AgentNotifier.app/
 
 # Root binary (should be in bin/ instead)
-/claude-notifications
+/agent-notifications
 
 # Test binaries
 *.test
@@ -89,4 +89,4 @@ build/
 
 .build/
 
-bin/claude-notifications-linux-amd64
+bin/agent-notifications-linux-amd64

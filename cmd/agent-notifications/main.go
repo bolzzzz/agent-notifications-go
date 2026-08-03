@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/audio"
-	"github.com/777genius/claude-notifications/internal/errorhandler"
-	"github.com/777genius/claude-notifications/internal/hooks"
-	"github.com/777genius/claude-notifications/internal/logging"
-	"github.com/777genius/claude-notifications/internal/notifier"
-	"github.com/777genius/claude-notifications/internal/winfocus"
+	"github.com/777genius/agent-notifications-go/internal/audio"
+	"github.com/777genius/agent-notifications-go/internal/errorhandler"
+	"github.com/777genius/agent-notifications-go/internal/hooks"
+	"github.com/777genius/agent-notifications-go/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/notifier"
+	"github.com/777genius/agent-notifications-go/internal/winfocus"
 )
 
 const versionBase = "1.40.1"
@@ -87,7 +87,7 @@ func main() {
 	case "windows-hooks":
 		runWindowsHooks(os.Args[2:])
 	case "version", "--version", "-v":
-		fmt.Printf("claude-notifications v%s\n", version)
+		fmt.Printf("agent-notifications v%s\n", version)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -200,7 +200,7 @@ func parseWindowsHooksExecutable(args []string) (string, error) {
 	}
 
 	pluginRoot := getPluginRoot()
-	return filepath.Abs(filepath.Join(pluginRoot, "bin", "claude-notifications-windows-amd64.exe"))
+	return filepath.Abs(filepath.Join(pluginRoot, "bin", "agent-notifications-windows-amd64.exe"))
 }
 
 func newExecHook(exePath, hookName string) hookCommand {
@@ -285,7 +285,7 @@ func windowsLazyUpdateStampPath(pluginRoot string) string {
 	if err != nil || cacheDir == "" {
 		cacheDir = filepath.Join(pluginRoot, ".cache")
 	}
-	return filepath.Join(cacheDir, "claude-notifications-go", "windows-lazy-update-stamp")
+	return filepath.Join(cacheDir, "agent-notifications-go", "windows-lazy-update-stamp")
 }
 
 func windowsLazyUpdateRecentlyScheduled(stampPath, stampKey string) bool {
@@ -377,11 +377,11 @@ func findWindowsPowerShell() (string, error) {
 }
 
 func findWindowsBash() (string, error) {
-	if override := os.Getenv("CLAUDE_NOTIFICATIONS_BASH"); override != "" {
+	if override := os.Getenv("AGENT_NOTIFICATIONS_BASH"); override != "" {
 		if _, err := os.Stat(override); err == nil {
 			return override, nil
 		}
-		return "", fmt.Errorf("CLAUDE_NOTIFICATIONS_BASH not found: %s", override)
+		return "", fmt.Errorf("AGENT_NOTIFICATIONS_BASH not found: %s", override)
 	}
 
 	for _, name := range []string{"bash.exe", "bash"} {
@@ -425,7 +425,7 @@ func getPluginRoot() string {
 	// Explicit override set by the opencode plugin (.opencode/plugins/), which
 	// knows where the plugin checkout lives even when it runs from a global
 	// opencode plugins directory.
-	if root := os.Getenv("CLAUDE_NOTIFICATIONS_PLUGIN_ROOT"); root != "" {
+	if root := os.Getenv("AGENT_NOTIFICATIONS_PLUGIN_ROOT"); root != "" {
 		return root
 	}
 
@@ -505,7 +505,7 @@ func runPlaySound(args []string) {
 }
 
 // runFocusWindows handles a click on a Windows toast notification. Windows
-// launches the registered claude-notify-focus: protocol with the encoded focus
+// launches the registered agent-notify-focus: protocol with the encoded focus
 // context as the single argument; we decode it and raise the terminal window.
 func runFocusWindows(args []string) {
 	if len(args) < 1 {
@@ -559,16 +559,16 @@ func parseFocusWindowOptions(args []string) (notifier.FocusWindowOptions, error)
 }
 
 func printUsage() {
-	fmt.Println("claude-notifications - Smart notifications for Claude Code")
+	fmt.Println("agent-notifications - Smart notifications for Claude Code")
 	fmt.Println()
 	fmt.Printf("Version: %s\n", version)
 	fmt.Println()
 	fmt.Println("Usage:")
-	fmt.Println("  claude-notifications handle-hook <HookName>")
-	fmt.Println("  claude-notifications daemon")
-	fmt.Println("  claude-notifications windows-hooks [--exe <path>]")
-	fmt.Println("  claude-notifications version")
-	fmt.Println("  claude-notifications help")
+	fmt.Println("  agent-notifications handle-hook <HookName>")
+	fmt.Println("  agent-notifications daemon")
+	fmt.Println("  agent-notifications windows-hooks [--exe <path>]")
+	fmt.Println("  agent-notifications version")
+	fmt.Println("  agent-notifications help")
 	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println("  handle-hook <HookName>  Handle a Claude Code hook event")
@@ -586,19 +586,19 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  # Handle PreToolUse hook (reads JSON from stdin)")
-	fmt.Println("  echo '{\"session_id\":\"test\",\"tool_name\":\"ExitPlanMode\"}' | claude-notifications handle-hook PreToolUse")
+	fmt.Println("  echo '{\"session_id\":\"test\",\"tool_name\":\"ExitPlanMode\"}' | agent-notifications handle-hook PreToolUse")
 	fmt.Println()
 	fmt.Println("  # Handle Stop hook")
-	fmt.Println("  echo '{\"session_id\":\"test\",\"transcript_path\":\"/path/to/transcript.jsonl\"}' | claude-notifications handle-hook Stop")
+	fmt.Println("  echo '{\"session_id\":\"test\",\"transcript_path\":\"/path/to/transcript.jsonl\"}' | agent-notifications handle-hook Stop")
 	fmt.Println()
 	fmt.Println("  # Run notification daemon (Linux only, started automatically)")
-	fmt.Println("  claude-notifications daemon")
+	fmt.Println("  agent-notifications daemon")
 	fmt.Println()
 	fmt.Println("  # Print Windows exec-form hook configuration")
-	fmt.Println("  claude-notifications windows-hooks")
+	fmt.Println("  agent-notifications windows-hooks")
 	fmt.Println()
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAUDE_PLUGIN_ROOT  Plugin root directory (auto-detected if not set)")
-	fmt.Println("  CLAUDE_NOTIFICATIONS_PLUGIN_ROOT  Plugin root override (set by the opencode plugin)")
+	fmt.Println("  AGENT_NOTIFICATIONS_PLUGIN_ROOT  Plugin root override (set by the opencode plugin)")
 	fmt.Println()
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local development helper for Claude Notifications plugin installs/updates.
+# Local development helper for Agent Notifications plugin installs/updates.
 # Uses an isolated CLAUDE_CONFIG_DIR by default so local testing never touches
 # your real Claude installation unless you explicitly opt into that.
 
@@ -8,11 +8,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-MARKETPLACE_NAME="claude-notifications-go"
-PLUGIN_NAME="claude-notifications-go"
+MARKETPLACE_NAME="agent-notifications-go"
+PLUGIN_NAME="agent-notifications-go"
 PLUGIN_KEY="${PLUGIN_NAME}@${MARKETPLACE_NAME}"
 
-DEFAULT_DEV_HOME="${HOME}/.claude-dev/claude-notifications-go"
+DEFAULT_DEV_HOME="${HOME}/.claude-dev/agent-notifications-go"
 DEV_CLAUDE_HOME="${CLAUDE_CONFIG_DIR:-${DEV_CLAUDE_HOME:-$DEFAULT_DEV_HOME}}"
 
 INSTALLED_JSON="${DEV_CLAUDE_HOME}/plugins/installed_plugins.json"

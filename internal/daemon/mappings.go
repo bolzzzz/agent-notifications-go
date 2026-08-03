@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const claudeNotificationsDesktopEntryID = "claude-notifications"
+const agentNotificationsDesktopEntryID = "agent-notifications"
 
 // escapeJS escapes a string for safe interpolation into JavaScript single-quoted strings.
 // Prevents JS injection when values are passed to GNOME Shell.Eval.
@@ -61,8 +61,8 @@ func GetDesktopEntryID(terminalName string) string {
 // file with StartupNotify=false avoids that spinner while preserving click
 // handling via our daemon.
 func GetNotificationDesktopEntryID(terminalName string) string {
-	if isGnomeWaylandSession() && hasClaudeNotificationsDesktopEntry() {
-		return claudeNotificationsDesktopEntryID
+	if isGnomeWaylandSession() && hasAgentNotificationsDesktopEntry() {
+		return agentNotificationsDesktopEntryID
 	}
 	return GetDesktopEntryID(terminalName)
 }
@@ -86,12 +86,12 @@ func isGnomeWaylandSession() bool {
 	return false
 }
 
-func hasClaudeNotificationsDesktopEntry() bool {
-	_, err := os.Stat(getClaudeNotificationsDesktopEntryPath())
+func hasAgentNotificationsDesktopEntry() bool {
+	_, err := os.Stat(getAgentNotificationsDesktopEntryPath())
 	return err == nil
 }
 
-func getClaudeNotificationsDesktopEntryPath() string {
+func getAgentNotificationsDesktopEntryPath() string {
 	dataHome := strings.TrimSpace(os.Getenv("XDG_DATA_HOME"))
 	if dataHome == "" {
 		homeDir, err := os.UserHomeDir()
@@ -101,7 +101,7 @@ func getClaudeNotificationsDesktopEntryPath() string {
 		dataHome = homeDir + "/.local/share"
 	}
 
-	return dataHome + "/applications/" + claudeNotificationsDesktopEntryID + ".desktop"
+	return dataHome + "/applications/" + agentNotificationsDesktopEntryID + ".desktop"
 }
 
 // GetGnomeWmClass returns the WM_CLASS used by the activate-window-by-title

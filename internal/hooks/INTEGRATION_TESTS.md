@@ -193,7 +193,7 @@ go test -tags=integration -v -run "Webhook|Concurrent" ./internal/hooks/
 **State файлы остаются?**
 ```bash
 # Очистить /tmp
-rm -rf /tmp/claude-notifications-*
+rm -rf /tmp/agent-notifications-*
 ```
 
 **Webhook не срабатывает?**

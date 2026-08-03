@@ -3,7 +3,7 @@ import UserNotifications
 
 enum NotificationCategory {
 
-    static let categoryIdentifier = "CLAUDE_NOTIFICATION"
+    static let categoryIdentifier = "AGENT_NOTIFICATION"
 
     static func register() {
         let openAction = UNNotificationAction(

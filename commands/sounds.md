@@ -14,7 +14,7 @@ Show the user what notification sounds are available on their system.
 # Get plugin root directory
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"
 if [ -z "$PLUGIN_ROOT" ]; then
-  INSTALLED_PATH="$HOME/.claude/plugins/marketplaces/claude-notifications-go"
+  INSTALLED_PATH="$HOME/.claude/plugins/marketplaces/agent-notifications-go"
   if [ -d "$INSTALLED_PATH" ]; then
     PLUGIN_ROOT="$INSTALLED_PATH"
   else
@@ -73,7 +73,7 @@ If the user wants to preview a sound, use the sound-preview binary or list-sound
 ```bash
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"
 if [ -z "$PLUGIN_ROOT" ]; then
-  INSTALLED_PATH="$HOME/.claude/plugins/marketplaces/claude-notifications-go"
+  INSTALLED_PATH="$HOME/.claude/plugins/marketplaces/agent-notifications-go"
   if [ -d "$INSTALLED_PATH" ]; then
     PLUGIN_ROOT="$INSTALLED_PATH"
   else
@@ -87,4 +87,4 @@ fi
 
 After showing the list, tell the user:
 - They can preview any sound by asking "play <name>"
-- To configure sounds, use `/claude-notifications-go:settings`
+- To configure sounds, use `/agent-notifications-go:settings`

@@ -1,4 +1,4 @@
-// opencode plugin for claude-notifications-go.
+// opencode plugin for agent-notifications-go.
 //
 // opencode has no JSON-command hooks (unlike Claude Code/Codex), so this
 // plugin forwards opencode events to the Go binary's `handle-hook` subcommand
@@ -14,10 +14,10 @@
 //   session.error         -> handle-hook Stop          (API/auth errors)
 //
 // Binary resolution order:
-//   1. $CLAUDE_NOTIFICATIONS_BIN
+//   1. $AGENT_NOTIFICATIONS_BIN
 //   2. $CLAUDE_PLUGIN_ROOT/bin/<binary> (existing Claude Code plugin install)
 //   3. <plugin file>/../../bin/<binary> (plugin checkout, e.g. this repo)
-//   4. claude-notifications on PATH
+//   4. agent-notifications on PATH
 import type { Plugin } from "@opencode-ai/plugin"
 import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
@@ -52,16 +52,16 @@ function pluginFileDir(): string {
 }
 
 // platformBinaryNames returns the binary names for this host, e.g.
-// ["claude-notifications", "claude-notifications-darwin-arm64"] (with .exe on
-// Windows, matching install.sh's claude-notifications-<os>-<arch> assets).
+// ["agent-notifications", "agent-notifications-darwin-arm64"] (with .exe on
+// Windows, matching install.sh's agent-notifications-<os>-<arch> assets).
 function platformBinaryNames(): string[] {
-  const names = ["claude-notifications"]
+  const names = ["agent-notifications"]
   const osMap: Record<string, string> = { darwin: "darwin", linux: "linux", win32: "windows" }
   const archMap: Record<string, string> = { x64: "amd64", arm64: "arm64" }
   const os = osMap[process.platform]
   const arch = archMap[process.arch]
   if (os && arch) {
-    names.push(`claude-notifications-${os}-${arch}`)
+    names.push(`agent-notifications-${os}-${arch}`)
   }
   return process.platform === "win32" ? names.map((n) => `${n}.exe`) : names
 }
@@ -73,7 +73,7 @@ function candidateBins(root: string): string[] {
 function resolveBinary(): { bin: string; pluginRoot: string | null; found: boolean } {
   const candidates: Array<{ bin: string; root: string | null }> = []
 
-  const explicit = process.env.CLAUDE_NOTIFICATIONS_BIN
+  const explicit = process.env.AGENT_NOTIFICATIONS_BIN
   if (explicit) candidates.push({ bin: explicit, root: null })
 
   const claudeRoot = process.env.CLAUDE_PLUGIN_ROOT
@@ -91,7 +91,7 @@ function resolveBinary(): { bin: string; pluginRoot: string | null; found: boole
   }
 
   // Last resort: rely on PATH.
-  return { bin: "claude-notifications", root: claudeRoot, found: false }
+  return { bin: "agent-notifications", root: claudeRoot, found: false }
 }
 
 function runHook(hookEvent: string, payload: HookPayload, onMissingBinary?: () => void): void {
@@ -102,7 +102,7 @@ function runHook(hookEvent: string, payload: HookPayload, onMissingBinary?: () =
   }
   const env: NodeJS.ProcessEnv = { ...process.env }
   if (resolved.pluginRoot) {
-    env.CLAUDE_NOTIFICATIONS_PLUGIN_ROOT = resolved.pluginRoot
+    env.AGENT_NOTIFICATIONS_PLUGIN_ROOT = resolved.pluginRoot
   }
 
   let child: ReturnType<typeof spawn>
@@ -176,9 +176,9 @@ export const Notifications: Plugin = async ({ client, directory }) => {
   let warnedMissingBinary = false
 
   const log = (level: "info" | "warn" | "debug", message: string, extra?: Record<string, unknown>) => {
-    if (level === "debug" && process.env.CLAUDE_NOTIFICATIONS_DEBUG !== "1") return
+    if (level === "debug" && process.env.AGENT_NOTIFICATIONS_DEBUG !== "1") return
     client.app
-      .log({ body: { service: "claude-notifications-go", level, message, ...(extra ? { extra } : {}) } })
+      .log({ body: { service: "agent-notifications-go", level, message, ...(extra ? { extra } : {}) } })
       .catch(() => {})
   }
 
@@ -212,8 +212,8 @@ export const Notifications: Plugin = async ({ client, directory }) => {
         if (warnedMissingBinary) return
         warnedMissingBinary = true
         // One-time warning; the binary is usually at CLAUDE_PLUGIN_ROOT/bin
-        // or CLAUDE_NOTIFICATIONS_BIN.
-        log("warn", "claude-notifications binary not found. Set CLAUDE_NOTIFICATIONS_BIN or CLAUDE_PLUGIN_ROOT.")
+        // or AGENT_NOTIFICATIONS_BIN.
+        log("warn", "agent-notifications binary not found. Set AGENT_NOTIFICATIONS_BIN or CLAUDE_PLUGIN_ROOT.")
       })
     } catch {
       // Never let notification failures break the opencode session.

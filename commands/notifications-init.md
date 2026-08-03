@@ -6,4 +6,4 @@ allowed-tools: Bash
 
 This command has been renamed to the shorter form.
 
-Please run [`/claude-notifications-go:init`](./init.md) instead.
+Please run [`/agent-notifications-go:init`](./init.md) instead.

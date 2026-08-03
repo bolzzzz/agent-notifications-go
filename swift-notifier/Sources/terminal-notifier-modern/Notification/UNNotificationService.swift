@@ -35,7 +35,7 @@ final class UNNotificationService: NotificationSending {
         content.title = config.title
         content.body = config.message
         content.sound = config.silent ? nil : .default
-        content.categoryIdentifier = "CLAUDE_NOTIFICATION"
+        content.categoryIdentifier = "AGENT_NOTIFICATION"
 
         if let subtitle = config.subtitle {
             content.subtitle = subtitle

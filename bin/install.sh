@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh - Auto-installer for claude-notifications binaries
+# install.sh - Auto-installer for agent-notifications binaries
 # Downloads the appropriate binary from GitHub Releases
 
 set -e
@@ -37,15 +37,15 @@ CURL_EXTRA_OPTS=()
 CURL_COMPAT_OPTS=()
 
 # GitHub repository (can be overridden via env for testing)
-REPO="777genius/claude-notifications-go"
+REPO="777genius/agent-notifications-go"
 RELEASES_BASE_URL="${RELEASES_BASE_URL:-https://github.com/${REPO}/releases}"
 LATEST_RELEASE_API_URL="${LATEST_RELEASE_API_URL:-https://api.github.com/repos/${REPO}/releases/latest}"
 DEFAULT_RELEASE_URL="${RELEASES_BASE_URL}/latest/download"
 DEFAULT_CHECKSUMS_URL="${DEFAULT_RELEASE_URL}/checksums.txt"
-DEFAULT_MODERN_NOTIFIER_URL="${DEFAULT_RELEASE_URL}/ClaudeNotifier.app.zip"
+DEFAULT_MODERN_NOTIFIER_URL="${DEFAULT_RELEASE_URL}/AgentNotifier.app.zip"
 RELEASE_URL="${RELEASE_URL:-${DEFAULT_RELEASE_URL}}"
 CHECKSUMS_URL="${CHECKSUMS_URL:-${DEFAULT_CHECKSUMS_URL}}"
-# ClaudeNotifier.app is built, signed with Developer ID, and notarized in CI.
+# AgentNotifier.app is built, signed with Developer ID, and notarized in CI.
 # It ships alongside Go binaries in each release.
 MODERN_NOTIFIER_URL="${MODERN_NOTIFIER_URL:-${DEFAULT_MODERN_NOTIFIER_URL}}"
 PINNED_RELEASE_TAG=""
@@ -62,7 +62,7 @@ for arg in "$@"; do
 done
 
 is_wsl_environment() {
-    case "${CLAUDE_NOTIFICATIONS_ALLOW_WSL:-}" in
+    case "${AGENT_NOTIFICATIONS_ALLOW_WSL:-}" in
         1|true|TRUE|yes|YES) return 1 ;;
     esac
 
@@ -92,7 +92,7 @@ abort_if_wsl_environment() {
     echo -e "  curl -fsSL https://raw.githubusercontent.com/${REPO}/main/bin/bootstrap.sh | bash" >&2
     echo "" >&2
     echo -e "${YELLOW}If you intentionally use Claude Code inside WSL, rerun with:${NC}" >&2
-    echo -e "  curl -fsSL https://raw.githubusercontent.com/${REPO}/main/bin/bootstrap.sh | env CLAUDE_NOTIFICATIONS_ALLOW_WSL=1 bash" >&2
+    echo -e "  curl -fsSL https://raw.githubusercontent.com/${REPO}/main/bin/bootstrap.sh | env AGENT_NOTIFICATIONS_ALLOW_WSL=1 bash" >&2
     echo "" >&2
     exit 1
 }
@@ -133,12 +133,12 @@ detect_platform() {
 
     # Construct binary names
     if [ "$PLATFORM" = "windows" ]; then
-        BINARY_NAME="claude-notifications-${PLATFORM}-${ARCH}.exe"
+        BINARY_NAME="agent-notifications-${PLATFORM}-${ARCH}.exe"
         SOUND_PREVIEW_NAME="sound-preview-${PLATFORM}-${ARCH}.exe"
         LIST_DEVICES_NAME="list-devices-${PLATFORM}-${ARCH}.exe"
         LIST_SOUNDS_NAME="list-sounds-${PLATFORM}-${ARCH}.exe"
     else
-        BINARY_NAME="claude-notifications-${PLATFORM}-${ARCH}"
+        BINARY_NAME="agent-notifications-${PLATFORM}-${ARCH}"
         SOUND_PREVIEW_NAME="sound-preview-${PLATFORM}-${ARCH}"
         LIST_DEVICES_NAME="list-devices-${PLATFORM}-${ARCH}"
         LIST_SOUNDS_NAME="list-sounds-${PLATFORM}-${ARCH}"
@@ -453,7 +453,7 @@ pin_release_urls() {
     fi
 
     if [ "$MODERN_NOTIFIER_URL" = "$DEFAULT_MODERN_NOTIFIER_URL" ]; then
-        MODERN_NOTIFIER_URL="${RELEASE_URL}/ClaudeNotifier.app.zip"
+        MODERN_NOTIFIER_URL="${RELEASE_URL}/AgentNotifier.app.zip"
     fi
 
     echo -e "${BLUE}Release:${NC}  ${PINNED_RELEASE_TAG}"
@@ -588,10 +588,10 @@ check_existing() {
         echo -e "${BLUE}🔄 Force update requested, removing old files...${NC}"
         rm -f "$BINARY_PATH" "$SOUND_PREVIEW_PATH" "$LIST_DEVICES_PATH" "$LIST_SOUNDS_PATH" 2>/dev/null
         # Remove symlinks (Unix) and .bat wrappers (Windows)
-        rm -f "${SCRIPT_DIR}/claude-notifications" "${SCRIPT_DIR}/sound-preview" "${SCRIPT_DIR}/list-devices" "${SCRIPT_DIR}/list-sounds" 2>/dev/null
-        rm -f "${SCRIPT_DIR}/claude-notifications.bat" "${SCRIPT_DIR}/sound-preview.bat" "${SCRIPT_DIR}/list-devices.bat" "${SCRIPT_DIR}/list-sounds.bat" 2>/dev/null
+        rm -f "${SCRIPT_DIR}/agent-notifications" "${SCRIPT_DIR}/sound-preview" "${SCRIPT_DIR}/list-devices" "${SCRIPT_DIR}/list-sounds" 2>/dev/null
+        rm -f "${SCRIPT_DIR}/agent-notifications.bat" "${SCRIPT_DIR}/sound-preview.bat" "${SCRIPT_DIR}/list-devices.bat" "${SCRIPT_DIR}/list-sounds.bat" 2>/dev/null
         # Remove macOS apps for clean reinstall
-        rm -rf "${SCRIPT_DIR}/terminal-notifier.app" "${SCRIPT_DIR}/ClaudeNotifier.app" "${SCRIPT_DIR}/ClaudeNotifications.app" 2>/dev/null
+        rm -rf "${SCRIPT_DIR}/terminal-notifier.app" "${SCRIPT_DIR}/AgentNotifier.app" "${SCRIPT_DIR}/AgentNotifications.app" 2>/dev/null
         rm -f "${SCRIPT_DIR}/README.markdown" 2>/dev/null
         return 1
     fi
@@ -977,7 +977,7 @@ verify_executable() {
     fi
 
     # Verify output contains expected string
-    if ! echo "$output" | grep -qiE "claude-notifications|version"; then
+    if ! echo "$output" | grep -qiE "agent-notifications|version"; then
         echo -e "${RED}✗ Binary output unexpected${NC}" >&2
         echo -e "${RED}  Output: ${output}${NC}" >&2
         echo -e "${YELLOW}This doesn't appear to be the correct binary.${NC}" >&2
@@ -1016,7 +1016,7 @@ windows_native_hooks_are_exec_form() {
     local hooks_json="$1"
     printf '%s\n' "$hooks_json" | grep -qE '"args"[[:space:]]*:[[:space:]]*\[' &&
         printf '%s\n' "$hooks_json" | grep -qE '"handle-hook"' &&
-        printf '%s\n' "$hooks_json" | grep -qE '"command"[[:space:]]*:[[:space:]]*"[^"]*claude-notifications-windows-[^"]*\.exe"' &&
+        printf '%s\n' "$hooks_json" | grep -qE '"command"[[:space:]]*:[[:space:]]*"[^"]*agent-notifications-windows-[^"]*\.exe"' &&
         ! printf '%s\n' "$hooks_json" | grep -qE '"shell"[[:space:]]*:' &&
         ! printf '%s\n' "$hooks_json" | grep -qF '$input' &&
         ! printf '%s\n' "$hooks_json" | grep -qE '"command"[[:space:]]*:[^\n]*\|' &&
@@ -1043,7 +1043,7 @@ windows_native_hooks_update_required() {
 create_symlink() {
     # On Windows, create a .bat wrapper instead of symlink
     if [ "$PLATFORM" = "windows" ]; then
-        local bat_path="${SCRIPT_DIR}/claude-notifications.bat"
+        local bat_path="${SCRIPT_DIR}/agent-notifications.bat"
 
         # Remove old .bat file if exists
         rm -f "$bat_path" 2>/dev/null || true
@@ -1051,7 +1051,7 @@ create_symlink() {
         # Create .bat wrapper that calls the platform-specific binary
         cat > "$bat_path" << EOF
 @echo off
-REM claude-notifications Windows wrapper
+REM agent-notifications Windows wrapper
 REM Automatically runs the platform-specific binary
 
 setlocal
@@ -1060,7 +1060,7 @@ set SCRIPT_DIR=%~dp0
 EOF
 
         if [ -f "$bat_path" ]; then
-            echo -e "${GREEN}✓ Created wrapper${NC} claude-notifications.bat → ${BINARY_NAME}"
+            echo -e "${GREEN}✓ Created wrapper${NC} agent-notifications.bat → ${BINARY_NAME}"
             return 0
         else
             echo -e "${YELLOW}⚠ Could not create .bat wrapper (hooks may not work)${NC}"
@@ -1069,20 +1069,20 @@ EOF
     fi
 
     # Unix: create symlink or copy
-    local symlink_path="${SCRIPT_DIR}/claude-notifications"
+    local symlink_path="${SCRIPT_DIR}/agent-notifications"
 
     # Remove old symlink if exists
     rm -f "$symlink_path" 2>/dev/null || true
 
     # Create symlink pointing to platform-specific binary
     if ln -s "$BINARY_NAME" "$symlink_path" 2>/dev/null; then
-        echo -e "${GREEN}✓ Created symlink${NC} claude-notifications → ${BINARY_NAME}"
+        echo -e "${GREEN}✓ Created symlink${NC} agent-notifications → ${BINARY_NAME}"
         return 0
     else
         # Fallback: copy if symlink fails (some systems don't support symlinks)
         if cp "$BINARY_PATH" "$symlink_path" 2>/dev/null; then
             chmod +x "$symlink_path" 2>/dev/null || true
-            echo -e "${GREEN}✓ Created copy${NC} claude-notifications (symlink not supported)"
+            echo -e "${GREEN}✓ Created copy${NC} agent-notifications (symlink not supported)"
             return 0
         fi
 
@@ -1127,20 +1127,20 @@ cleanup() {
     rm -f "$CHECKSUMS_PATH" 2>/dev/null || true
 }
 
-# Download ClaudeNotifier for macOS (modern UNUserNotificationCenter, works on M4 Sequoia)
+# Download AgentNotifier for macOS (modern UNUserNotificationCenter, works on M4 Sequoia)
 download_terminal_notifier_modern() {
-    local MODERN_APP="${SCRIPT_DIR}/ClaudeNotifier.app"
-    local MODERN_URL="${MODERN_NOTIFIER_URL:-${RELEASE_URL}/ClaudeNotifier.app.zip}"
-    local TEMP_ZIP="${TMPDIR:-${TEMP:-/tmp}}/ClaudeNotifier-$$.zip"
+    local MODERN_APP="${SCRIPT_DIR}/AgentNotifier.app"
+    local MODERN_URL="${MODERN_NOTIFIER_URL:-${RELEASE_URL}/AgentNotifier.app.zip}"
+    local TEMP_ZIP="${TMPDIR:-${TEMP:-/tmp}}/AgentNotifier-$$.zip"
 
     # Check if already installed
     if [ -d "$MODERN_APP" ] && [ -x "$MODERN_APP/Contents/MacOS/terminal-notifier-modern" ]; then
-        echo -e "${GREEN}✓${NC} ClaudeNotifier already installed"
+        echo -e "${GREEN}✓${NC} AgentNotifier already installed"
         return 0
     fi
 
     echo ""
-    echo -e "${BLUE}📦 Installing ClaudeNotifier (modern notifications + click-to-focus)...${NC}"
+    echo -e "${BLUE}📦 Installing AgentNotifier (modern notifications + click-to-focus)...${NC}"
 
     local attempt=1
     local downloaded=false
@@ -1167,7 +1167,7 @@ download_terminal_notifier_modern() {
     done
 
     if [ "$downloaded" != true ]; then
-        echo -e "${YELLOW}⚠ Could not download ClaudeNotifier, falling back to legacy${NC}"
+        echo -e "${YELLOW}⚠ Could not download AgentNotifier, falling back to legacy${NC}"
         rm -f "$TEMP_ZIP" 2>/dev/null
         return 1
     fi
@@ -1181,7 +1181,7 @@ download_terminal_notifier_modern() {
 
     # Extract
     if ! unzip -o -q "$TEMP_ZIP" -d "${SCRIPT_DIR}/" 2>&1; then
-        echo -e "${YELLOW}⚠ Could not extract ClaudeNotifier${NC}"
+        echo -e "${YELLOW}⚠ Could not extract AgentNotifier${NC}"
         rm -f "$TEMP_ZIP"
         return 1
     fi
@@ -1200,10 +1200,10 @@ download_terminal_notifier_modern() {
         fi
         # Register with Launch Services
         /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$MODERN_APP" 2>/dev/null || true
-        echo -e "${GREEN}✓${NC} ClaudeNotifier installed (modern notifications + click-to-focus)"
+        echo -e "${GREEN}✓${NC} AgentNotifier installed (modern notifications + click-to-focus)"
         return 0
     else
-        echo -e "${YELLOW}⚠ ClaudeNotifier extraction incomplete, falling back to legacy${NC}"
+        echo -e "${YELLOW}⚠ AgentNotifier extraction incomplete, falling back to legacy${NC}"
         rm -rf "$MODERN_APP" 2>/dev/null
         return 1
     fi
@@ -1283,15 +1283,15 @@ download_terminal_notifier() {
     fi
 }
 
-# Create ClaudeNotifications.app for custom notification icon
+# Create AgentNotifications.app for custom notification icon
 create_claude_notifications_app() {
-    local APP_DIR="${SCRIPT_DIR}/ClaudeNotifications.app"
+    local APP_DIR="${SCRIPT_DIR}/AgentNotifications.app"
     local PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
     local ICON_SRC="${PLUGIN_ROOT}/claude_icon.png"
 
     # Check if already created
     if [ -d "$APP_DIR" ]; then
-        echo -e "${GREEN}✓${NC} ClaudeNotifications.app already exists"
+        echo -e "${GREEN}✓${NC} AgentNotifications.app already exists"
         return 0
     fi
 
@@ -1301,7 +1301,7 @@ create_claude_notifications_app() {
         return 1
     fi
 
-    echo -e "${BLUE}🎨 Creating ClaudeNotifications.app (notification icon)...${NC}"
+    echo -e "${BLUE}🎨 Creating AgentNotifications.app (notification icon)...${NC}"
 
     # Create app structure
     mkdir -p "$APP_DIR/Contents/MacOS"
@@ -1344,7 +1344,7 @@ create_claude_notifications_app() {
     <key>CFBundleIdentifier</key>
     <string>com.claude.notifications</string>
     <key>CFBundleName</key>
-    <string>Claude Notifications</string>
+    <string>Agent Notifications</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>
@@ -1365,7 +1365,7 @@ EXEC_EOF
     # Register with Launch Services
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_DIR" 2>/dev/null || true
 
-    echo -e "${GREEN}✓${NC} ClaudeNotifications.app created (Claude icon in notifications)"
+    echo -e "${GREEN}✓${NC} AgentNotifications.app created (Claude icon in notifications)"
     return 0
 }
 
@@ -1386,7 +1386,7 @@ setup_iterm2_venv() {
 
     # Use $HOME/.claude explicitly (not $CLAUDE_HOME) — the Go code resolves
     # the venv path via os.UserHomeDir()/.claude/..., so the venv must be there.
-    local VENV_DIR="$HOME/.claude/claude-notifications-go/iterm2-venv"
+    local VENV_DIR="$HOME/.claude/agent-notifications-go/iterm2-venv"
 
     # Skip if venv already exists and is functional
     if [ -x "$VENV_DIR/bin/python3" ] && \
@@ -1564,7 +1564,7 @@ install_linux_notification_desktop_entry() {
 
     local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
     local applications_dir="${data_home}/applications"
-    local desktop_file="${applications_dir}/claude-notifications.desktop"
+    local desktop_file="${applications_dir}/agent-notifications.desktop"
     local tmp_file="${desktop_file}.tmp.$$"
 
     if ! mkdir -p "$applications_dir" 2>/dev/null; then
@@ -1574,7 +1574,7 @@ install_linux_notification_desktop_entry() {
 
     cat > "$tmp_file" << EOF
 [Desktop Entry]
-Name=codex-claude-notifications
+Name=codex-agent-notifications
 Type=Application
 Icon=utilities-terminal
 Exec=/usr/bin/true
@@ -1597,7 +1597,7 @@ EOF
 main() {
     echo ""
     echo -e "${BOLD}========================================${NC}"
-    echo -e "${BOLD} Claude Notifications - Binary Setup${NC}"
+    echo -e "${BOLD} Agent Notifications - Binary Setup${NC}"
     echo -e "${BOLD}========================================${NC}"
     echo ""
 
@@ -1641,7 +1641,7 @@ main() {
         # Download utility binaries (sound-preview, list-devices)
         download_utilities
 
-        # On macOS, also check ClaudeNotifier (preferred) or legacy terminal-notifier
+        # On macOS, also check AgentNotifier (preferred) or legacy terminal-notifier
         if [ "$PLATFORM" = "darwin" ]; then
             download_terminal_notifier_modern || download_terminal_notifier
             # Icon app is optional - don't fail if icon not found
@@ -1749,7 +1749,7 @@ main() {
     # Download utility binaries (sound-preview, list-devices)
     download_utilities
 
-    # On macOS, download ClaudeNotifier (preferred) or legacy terminal-notifier
+    # On macOS, download AgentNotifier (preferred) or legacy terminal-notifier
     if [ "$PLATFORM" = "darwin" ]; then
         download_terminal_notifier_modern || download_terminal_notifier
         # Icon app is optional - don't fail if icon not found
@@ -1782,8 +1782,8 @@ main() {
     echo -e "${GREEN}✓${NC} Checksum verified"
     echo -e "${GREEN}✓${NC} Symlinks created"
     if [ "$PLATFORM" = "darwin" ]; then
-        if [ -d "${SCRIPT_DIR}/ClaudeNotifier.app" ]; then
-            echo -e "${GREEN}✓${NC} ClaudeNotifier installed (modern notifications + click-to-focus)"
+        if [ -d "${SCRIPT_DIR}/AgentNotifier.app" ]; then
+            echo -e "${GREEN}✓${NC} AgentNotifier installed (modern notifications + click-to-focus)"
         else
             echo -e "${GREEN}✓${NC} terminal-notifier installed (click-to-focus)"
         fi

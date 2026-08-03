@@ -19,7 +19,7 @@ make build
 
 ### 2. Isolated local marketplace testing
 
-This is the safest default. It uses an isolated Claude config under `~/.claude-dev/claude-notifications-go` and does not touch your real `~/.claude`.
+This is the safest default. It uses an isolated Claude config under `~/.claude-dev/agent-notifications-go` and does not touch your real `~/.claude`.
 
 ```bash
 scripts/dev-local-plugin.sh install
@@ -66,15 +66,15 @@ Build the binary from the repo root:
 macOS / Linux:
 
 ```bash
-go build -o bin/claude-notifications ./cmd/claude-notifications
-./bin/claude-notifications version
+go build -o bin/agent-notifications ./cmd/agent-notifications
+./bin/agent-notifications version
 ```
 
 Windows PowerShell:
 
 ```powershell
-go build -o bin/claude-notifications.exe ./cmd/claude-notifications
-.\bin\claude-notifications.exe version
+go build -o bin/agent-notifications.exe ./cmd/agent-notifications
+.\bin\agent-notifications.exe version
 ```
 
 Trigger a direct desktop notification with a minimal `PreToolUse` payload:
@@ -82,20 +82,20 @@ Trigger a direct desktop notification with a minimal `PreToolUse` payload:
 macOS / Linux:
 
 ```bash
-echo '{"session_id":"local-debug","tool_name":"ExitPlanMode"}' | ./bin/claude-notifications handle-hook PreToolUse
+echo '{"session_id":"local-debug","tool_name":"ExitPlanMode"}' | ./bin/agent-notifications handle-hook PreToolUse
 ```
 
 Windows PowerShell:
 
 ```powershell
-'{"session_id":"win-debug","tool_name":"ExitPlanMode"}' | .\bin\claude-notifications.exe handle-hook PreToolUse
+'{"session_id":"win-debug","tool_name":"ExitPlanMode"}' | .\bin\agent-notifications.exe handle-hook PreToolUse
 ```
 
 Windows Git Bash:
 
 ```bash
-go build -o bin/claude-notifications.exe ./cmd/claude-notifications
-echo '{"session_id":"win-debug","tool_name":"ExitPlanMode"}' | ./bin/claude-notifications.exe handle-hook PreToolUse
+go build -o bin/agent-notifications.exe ./cmd/agent-notifications
+echo '{"session_id":"win-debug","tool_name":"ExitPlanMode"}' | ./bin/agent-notifications.exe handle-hook PreToolUse
 ```
 
 What to collect:
@@ -105,7 +105,7 @@ What to collect:
 3. The last lines from `notification-debug.log` in the repo root.
 4. The output of the built binary's `version` command.
 5. Relevant OS notification settings:
-   - macOS: `System Settings > Notifications > Claude Notifier`
+   - macOS: `System Settings > Notifications > Agent Notifier`
    - Linux: desktop-environment notification settings and whether the session is local desktop vs headless/remote
    - Windows: `Settings > System > Notifications > Claude Code Notifications`
 6. On macOS / Linux, if click-to-focus is part of the report, whether clicking the notification activates the expected window.
@@ -157,7 +157,7 @@ scripts/e2e-real-claude.sh status
 By default the script targets `~/.claude`. To target another Claude config:
 
 ```bash
-REAL_CLAUDE_HOME="$HOME/.claude-dev/claude-notifications-go" scripts/e2e-real-claude.sh status
+REAL_CLAUDE_HOME="$HOME/.claude-dev/agent-notifications-go" scripts/e2e-real-claude.sh status
 ```
 
 ## Switching Your Real Claude Between Local And Remote

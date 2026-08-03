@@ -17,7 +17,7 @@ VS Code window focus requires **Screen Recording** permission (macOS 10.15+) to 
 On first use the binary requests Screen Recording access automatically — a macOS dialog will appear. If you dismissed it:
 
 1. Open **System Settings → Privacy & Security → Screen Recording**
-2. Enable access for the `claude-notifications` binary (or the terminal running Claude Code)
+2. Enable access for the `agent-notifications` binary (or the terminal running Claude Code)
 3. Click the notification again
 
 Once granted, the correct VS Code window will be raised even if it is on a different Space.
@@ -49,7 +49,7 @@ TMPDIR="$HOME/.claude/tmp" claude
 Then retry:
 
 ```text
-/plugin install claude-notifications-go@claude-notifications-go
+/plugin install agent-notifications-go@agent-notifications-go
 ```
 
 ### Diagnostics (optional)
@@ -72,7 +72,7 @@ Clicking a notification focuses the wrong terminal window, a stale Terminator wi
 Reproduce the failed click first, then run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/scripts/linux-focus-debug.sh | bash
+curl -fsSL https://raw.githubusercontent.com/777genius/agent-notifications-go/main/scripts/linux-focus-debug.sh | bash
 ```
 
 The script generates a report file in the current directory with:
@@ -92,7 +92,7 @@ Linux click-to-focus behavior depends on the session type, terminal, window mana
 
 ### Symptom
 
-You run the bootstrap command from Windows Terminal or PowerShell, but the output says `Platform: Linux`, uses paths under `/home/...`, or mentions `claude-notifications-linux-amd64`.
+You run the bootstrap command from Windows Terminal or PowerShell, but the output says `Platform: Linux`, uses paths under `/home/...`, or mentions `agent-notifications-linux-amd64`.
 
 ### Why it happens
 
@@ -103,13 +103,13 @@ PowerShell and Windows Terminal can resolve `bash` to WSL. In that case the inst
 Open Git Bash from the Start menu and run the bootstrap command there. Do not run the bootstrap `curl ... | bash` command from PowerShell if it opens WSL.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/777genius/agent-notifications-go/main/bin/bootstrap.sh | bash
 ```
 
 If you intentionally use Claude Code inside WSL, opt in explicitly:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | env CLAUDE_NOTIFICATIONS_ALLOW_WSL=1 bash
+curl -fsSL https://raw.githubusercontent.com/777genius/agent-notifications-go/main/bin/bootstrap.sh | env AGENT_NOTIFICATIONS_ALLOW_WSL=1 bash
 ```
 
 ## Windows: install issues related to `%TEMP%` / `%TMP%` location
@@ -134,18 +134,18 @@ Claude Code supports PowerShell command hooks on Windows via `"shell": "powershe
 
 ### Fix
 
-Run the bootstrap installer or `/claude-notifications-go:init` again, then restart Claude Code. On Windows, the installer rewrites the plugin hook file to use PowerShell hooks with an absolute path to the native `.exe`, avoiding the Git Bash/shebang path.
+Run the bootstrap installer or `/agent-notifications-go:init` again, then restart Claude Code. On Windows, the installer rewrites the plugin hook file to use PowerShell hooks with an absolute path to the native `.exe`, avoiding the Git Bash/shebang path.
 
 If you need to inspect or apply the configuration manually, generate a PowerShell hook configuration from the installed executable. Replace `<arch>` with `amd64` or `arm64`:
 
 ```powershell
-.\bin\claude-notifications-windows-<arch>.exe windows-hooks
+.\bin\agent-notifications-windows-<arch>.exe windows-hooks
 ```
 
 If you downloaded the executable to a different location, pass it explicitly:
 
 ```powershell
-.\bin\claude-notifications-windows-<arch>.exe windows-hooks --exe "C:\absolute\path\to\claude-notifications-windows-<arch>.exe"
+.\bin\agent-notifications-windows-<arch>.exe windows-hooks --exe "C:\absolute\path\to\agent-notifications-windows-<arch>.exe"
 ```
 
 To apply it manually, replace the installed plugin's `hooks/hooks.json` with the generated JSON and restart Claude Code. This command only prints JSON - it does not modify files.
@@ -163,7 +163,7 @@ If you cannot run `windows-hooks`, replace the installed plugin's `hooks/hooks.j
         "hooks": [
           {
             "type": "command",
-            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\claude-notifications-windows-<arch>.exe\" handle-hook PreToolUse",
+            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\agent-notifications-windows-<arch>.exe\" handle-hook PreToolUse",
             "timeout": 30,
             "shell": "powershell"
           }
@@ -176,7 +176,7 @@ If you cannot run `windows-hooks`, replace the installed plugin's `hooks/hooks.j
         "hooks": [
           {
             "type": "command",
-            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\claude-notifications-windows-<arch>.exe\" handle-hook Notification",
+            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\agent-notifications-windows-<arch>.exe\" handle-hook Notification",
             "timeout": 30,
             "shell": "powershell"
           }
@@ -188,7 +188,7 @@ If you cannot run `windows-hooks`, replace the installed plugin's `hooks/hooks.j
         "hooks": [
           {
             "type": "command",
-            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\claude-notifications-windows-<arch>.exe\" handle-hook Stop",
+            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\agent-notifications-windows-<arch>.exe\" handle-hook Stop",
             "timeout": 30,
             "shell": "powershell"
           }
@@ -200,7 +200,7 @@ If you cannot run `windows-hooks`, replace the installed plugin's `hooks/hooks.j
         "hooks": [
           {
             "type": "command",
-            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\claude-notifications-windows-<arch>.exe\" handle-hook SubagentStop",
+            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\agent-notifications-windows-<arch>.exe\" handle-hook SubagentStop",
             "timeout": 30,
             "shell": "powershell"
           }
@@ -212,7 +212,7 @@ If you cannot run `windows-hooks`, replace the installed plugin's `hooks/hooks.j
         "hooks": [
           {
             "type": "command",
-            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\claude-notifications-windows-<arch>.exe\" handle-hook TeammateIdle",
+            "command": "$OutputEncoding = [System.Text.UTF8Encoding]::new($false); $input | & \"<absolute-path-to-plugin>\\bin\\agent-notifications-windows-<arch>.exe\" handle-hook TeammateIdle",
             "timeout": 30,
             "shell": "powershell"
           }
@@ -223,7 +223,7 @@ If you cannot run `windows-hooks`, replace the installed plugin's `hooks/hooks.j
 }
 ```
 
-This workaround is based on confirmed Windows 11 behavior from [issue #73](https://github.com/777genius/claude-notifications-go/issues/73#issuecomment-4364271319).
+This workaround is based on confirmed Windows 11 behavior from [issue #73](https://github.com/777genius/agent-notifications-go/issues/73#issuecomment-4364271319).
 
 ### Note about beeep logs
 
@@ -233,7 +233,7 @@ If the log contains `beeep.Notify returned a Windows toast false positive after 
 
 ### Symptom
 
-Bootstrap or `/claude-notifications-go:init` installs the plugin itself, but downloading `claude-notifications-windows-<arch>.exe` fails with an empty or generic network error.
+Bootstrap or `/agent-notifications-go:init` installs the plugin itself, but downloading `agent-notifications-windows-<arch>.exe` fails with an empty or generic network error.
 
 ### Why it happens
 
@@ -248,4 +248,4 @@ Bootstrap or `/claude-notifications-go:init` installs the plugin itself, but dow
 1. If your company requires a proxy, make sure the terminal running Claude Code or bootstrap has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY` configured.
 2. If your network inspects TLS traffic, ensure Git Bash `curl` trusts the corporate CA certificate.
 3. Retry from another network or from WSL to confirm whether the issue is network-specific.
-4. As a fallback, open the latest release page, download the matching `claude-notifications-windows-amd64.exe` or `claude-notifications-windows-arm64.exe`, place it into the plugin `bin` directory, and then re-run `/claude-notifications-go:init`.
+4. As a fallback, open the latest release page, download the matching `agent-notifications-windows-amd64.exe` or `agent-notifications-windows-arm64.exe`, place it into the plugin `bin` directory, and then re-run `/agent-notifications-go:init`.

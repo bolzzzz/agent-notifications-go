@@ -6,7 +6,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 REPO_ROOT="$(dirname "$PROJECT_DIR")"
 
 BINARY_NAME="terminal-notifier-modern"
-APP_BUNDLE_NAME="ClaudeNotifier"
+APP_BUNDLE_NAME="AgentNotifier"
 BUILD_DIR="${PROJECT_DIR}/.build"
 APP_BUNDLE="${PROJECT_DIR}/${APP_BUNDLE_NAME}.app"
 ICON_SRC="${REPO_ROOT}/claude_icon.png"

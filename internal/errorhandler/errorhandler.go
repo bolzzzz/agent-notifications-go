@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/777genius/claude-notifications/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/logging"
 )
 
 // ErrorHandler provides global error handling and logging
@@ -96,7 +96,7 @@ func (h *ErrorHandler) HandleCriticalError(err error, context string) {
 	logging.Error("%s", message)
 
 	// Always output critical errors to stderr as well (even if console logging is disabled)
-	fmt.Fprintf(os.Stderr, "[claude-notifications] %s\n", message)
+	fmt.Fprintf(os.Stderr, "[agent-notifications] %s\n", message)
 
 	if h.exitOnCritical {
 		os.Exit(1)
@@ -119,7 +119,7 @@ func (h *ErrorHandler) HandlePanic() {
 		logging.Error("%s", message)
 
 		// Always output panics to stderr as well
-		fmt.Fprintf(os.Stderr, "[claude-notifications] PANIC: %v\n", r)
+		fmt.Fprintf(os.Stderr, "[agent-notifications] PANIC: %v\n", r)
 
 		if h.exitOnCritical {
 			os.Exit(1)

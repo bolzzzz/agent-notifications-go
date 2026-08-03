@@ -28,7 +28,7 @@ func getTmuxSocketPath() string {
 }
 
 // getTmuxPath returns the absolute path to the tmux binary.
-// ClaudeNotifier.app runs without the user's PATH, so we need the full path.
+// AgentNotifier.app runs without the user's PATH, so we need the full path.
 func getTmuxPath() string {
 	if path, err := exec.LookPath("tmux"); err == nil {
 		return path
@@ -114,7 +114,7 @@ func IsTmuxControlMode() bool {
 // when running inside tmux. Uses both -activate (to focus the terminal app)
 // and -execute (to switch to the correct tmux session/window/pane) on click.
 func buildTmuxNotifierArgs(title, message, paneTarget, bundleID string) []string {
-	// Use absolute path to tmux and explicit socket — ClaudeNotifier.app
+	// Use absolute path to tmux and explicit socket — AgentNotifier.app
 	// runs without the user's shell PATH, so bare "tmux" won't be found.
 	tmuxPath := getTmuxPath()
 	socketPath := getTmuxSocketPath()

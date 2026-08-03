@@ -491,7 +491,7 @@ Optimized for frequent notifications:
       "format": "json",
       "headers": {
         "Authorization": "Bearer YOUR_TOKEN",
-        "X-Service-Name": "claude-notifications"
+        "X-Service-Name": "agent-notifications"
       },
       "retry": {
         "enabled": true,

@@ -36,7 +36,7 @@ https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
 
 ### 4. Configure Plugin
 
-Edit `~/.claude/claude-notifications-go/config.json`:
+Edit `~/.claude/agent-notifications-go/config.json`:
 
 ```json
 {
@@ -54,7 +54,7 @@ Edit `~/.claude/claude-notifications-go/config.json`:
 
 ```bash
 echo '{"session_id":"test","tool_name":"ExitPlanMode"}' | \
-  bin/claude-notifications handle-hook PreToolUse
+  bin/agent-notifications handle-hook PreToolUse
 ```
 
 Check your Slack channel for the notification!
@@ -98,7 +98,7 @@ Messages use Slack's **Attachments API**:
       "color": "#28a745",
       "title": "✅ Task Completed",
       "text": "[bold-cat] Created new authentication system with JWT tokens",
-      "footer": "Session: abc-123 | Claude Notifications",
+      "footer": "Session: abc-123 | Agent Notifications",
       "ts": 1729353045
     }
   ]
@@ -176,7 +176,7 @@ Messages use Slack's **Attachments API**:
 
 3. **Verify config:**
    ```bash
-   cat ~/.claude/claude-notifications-go/config.json | grep -A 5 "webhook"
+   cat ~/.claude/agent-notifications-go/config.json | grep -A 5 "webhook"
    ```
 
 ### Wrong Channel
@@ -208,7 +208,7 @@ If you hit rate limits:
 
 ## Best Practices
 
-1. **Use dedicated channels** - Create a `#claude-notifications` channel
+1. **Use dedicated channels** - Create a `#agent-notifications` channel
 2. **One webhook per channel** - Don't reuse webhooks across projects
 3. **Secure your URL** - Never commit webhook URLs to git
 4. **Enable retry** - Handle transient network failures

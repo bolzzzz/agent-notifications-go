@@ -12,21 +12,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
-	"github.com/777genius/claude-notifications/internal/benchmark"
-	"github.com/777genius/claude-notifications/internal/config"
-	"github.com/777genius/claude-notifications/internal/dedup"
-	"github.com/777genius/claude-notifications/internal/errorhandler"
-	"github.com/777genius/claude-notifications/internal/logging"
-	"github.com/777genius/claude-notifications/internal/notifier"
-	"github.com/777genius/claude-notifications/internal/platform"
-	"github.com/777genius/claude-notifications/internal/product"
-	"github.com/777genius/claude-notifications/internal/sessionname"
-	"github.com/777genius/claude-notifications/internal/state"
-	"github.com/777genius/claude-notifications/internal/summary"
-	"github.com/777genius/claude-notifications/internal/teamstate"
-	"github.com/777genius/claude-notifications/internal/webhook"
-	"github.com/777genius/claude-notifications/pkg/jsonl"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/benchmark"
+	"github.com/777genius/agent-notifications-go/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/dedup"
+	"github.com/777genius/agent-notifications-go/internal/errorhandler"
+	"github.com/777genius/agent-notifications-go/internal/logging"
+	"github.com/777genius/agent-notifications-go/internal/notifier"
+	"github.com/777genius/agent-notifications-go/internal/platform"
+	"github.com/777genius/agent-notifications-go/internal/product"
+	"github.com/777genius/agent-notifications-go/internal/sessionname"
+	"github.com/777genius/agent-notifications-go/internal/state"
+	"github.com/777genius/agent-notifications-go/internal/summary"
+	"github.com/777genius/agent-notifications-go/internal/teamstate"
+	"github.com/777genius/agent-notifications-go/internal/webhook"
+	"github.com/777genius/agent-notifications-go/pkg/jsonl"
 )
 
 // maxNotifyDelaySeconds bounds notifyDelaySeconds so the desktop grace-period
@@ -821,7 +821,7 @@ func (h *Handler) maybeEmitDesktopPermissionGuidance(err error) {
 		return
 	}
 
-	message := "[claude-notifications] macOS is blocking ClaudeNotifier notifications. Open System Settings > Notifications > Claude Notifier and enable notifications. This can happen after older ad-hoc installs or stale notification permissions."
+	message := "[agent-notifications] macOS is blocking AgentNotifier notifications. Open System Settings > Notifications > Agent Notifier and enable notifications. This can happen after older ad-hoc installs or stale notification permissions."
 	fmt.Printf("{\"systemMessage\":%q}\n", message)
 }
 
@@ -831,7 +831,7 @@ func (h *Handler) shouldEmitPermissionGuidance() bool {
 		return true
 	}
 
-	stampDir := filepath.Join(cacheDir, "claude-notifications-go")
+	stampDir := filepath.Join(cacheDir, "agent-notifications-go")
 	stampPath := filepath.Join(stampDir, "macos-notification-permission-reminder")
 
 	if info, err := os.Stat(stampPath); err == nil {

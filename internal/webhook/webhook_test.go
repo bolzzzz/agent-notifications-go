@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/777genius/claude-notifications/internal/analyzer"
-	"github.com/777genius/claude-notifications/internal/config"
+	"github.com/777genius/agent-notifications-go/internal/analyzer"
+	"github.com/777genius/agent-notifications-go/internal/config"
 )
 
 func newTestConfig(url string) *config.Config {
@@ -349,7 +349,7 @@ func TestSenderSendCustomHeaders(t *testing.T) {
 	if receivedHeaders.Get("Content-Type") != "application/json" {
 		t.Error("Content-Type not set")
 	}
-	if receivedHeaders.Get("User-Agent") != "claude-notifications/1.0" {
+	if receivedHeaders.Get("User-Agent") != "agent-notifications/1.0" {
 		t.Error("User-Agent not set")
 	}
 	if receivedHeaders.Get("X-Request-ID") == "" {
