@@ -14,6 +14,17 @@
 - **Codex CLI support** — `.codex-plugin/` registers the same binary as a Codex
   plugin (`Stop`/`SubagentStop`/`PermissionRequest`/`request_user_input`
   events), detected from the payload's `turn_id`/`model` fields or `PLUGIN_ROOT`.
+- **CodeBuddy Code support** — `.codebuddy-plugin/` registers the same binary as
+  a CodeBuddy Code plugin (`Stop`/`SubagentStop`/`Notification`/`PreToolUse`/
+  `SessionStart`/`TeammateIdle` events). CodeBuddy Code is hook-compatible with
+  Claude Code (identical event names and stdin payload), so it is identified by
+  its `CODEBUDDY_*` environment variables rather than payload fields; the hooks
+  pin `--product codebuddy` explicitly. When a `transcript_path` is present the
+  plugin normalizes CodeBuddy's own transcript schema (top-level `content[]`,
+  `output_text`/`function_call`, epoch-millisecond timestamps) into the shared
+  analyzer; otherwise it classifies from the payload's `last_assistant_message`
+  exactly like Codex. Configuration is additionally read from
+  `~/.codebuddy/agent-notifications-go/config.json`.
 - **VS Code window-focus fixes** — workspace/cwd-folder-aware window matching
   so the right VS Code window is focused when several are open; the session
   cwd is preserved for focus.

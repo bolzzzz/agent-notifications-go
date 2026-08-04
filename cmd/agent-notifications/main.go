@@ -63,7 +63,8 @@ func main() {
 			printUsage()
 			os.Exit(1)
 		}
-		handleHook(os.Args[2])
+		event, productOverride := parseHandleHookArgs(os.Args[2:])
+		handleHook(event, productOverride)
 	case "focus-window":
 		if len(os.Args) < 4 {
 			fmt.Fprintf(os.Stderr, "Error: focus-window requires bundleID and cwd arguments\n")
@@ -212,7 +213,28 @@ func newExecHook(exePath, hookName string) hookCommand {
 	}
 }
 
-func handleHook(hookEvent string) {
+// parseHandleHookArgs splits the handle-hook arguments into the hook event name
+// and an optional --product override (used by the CodeBuddy plugin to pin the
+// product when its hook payload carries no distinguishing field). Unknown flags
+// are ignored so the command keeps working if the host CLI adds new ones.
+func parseHandleHookArgs(args []string) (event, productOverride string) {
+	if len(args) == 0 {
+		return "", ""
+	}
+	event = args[0]
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--product":
+			if i+1 < len(args) {
+				i++
+				productOverride = args[i]
+			}
+		}
+	}
+	return event, productOverride
+}
+
+func handleHook(hookEvent, productOverride string) {
 	// Add panic recovery for this function
 	defer errorhandler.HandlePanic()
 
@@ -233,6 +255,7 @@ func handleHook(hookEvent string) {
 		errorhandler.HandleCriticalError(err, "Failed to create handler")
 		os.Exit(1)
 	}
+	handler.SetProductOverride(productOverride)
 
 	// Handle hook
 	if err := handler.HandleHook(hookEvent, os.Stdin); err != nil {
@@ -267,17 +290,33 @@ func maybeScheduleWindowsLazyUpdate(pluginRoot string) {
 	}
 }
 
-func readPluginManifestVersion(pluginRoot string) string {
-	data, err := os.ReadFile(filepath.Join(pluginRoot, ".claude-plugin", "plugin.json"))
-	if err != nil {
-		return ""
-	}
+// pluginManifestDirs is the ordered list of plugin manifest directories this
+// binary ships under. CodeBuddy Code (.codebuddy-plugin), WorkBuddy
+// (.workbuddy-plugin), and Claude Code (.claude-plugin) all share the same hook
+// binary; codebuddy.js resolves the manifest in exactly this order, so the
+// version check must match.
+var pluginManifestDirs = []string{
+	".codebuddy-plugin",
+	".workbuddy-plugin",
+	".claude-plugin",
+}
 
-	var manifest pluginManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return ""
+func readPluginManifestVersion(pluginRoot string) string {
+	for _, dir := range pluginManifestDirs {
+		data, err := os.ReadFile(filepath.Join(pluginRoot, dir, "plugin.json"))
+		if err != nil {
+			continue
+		}
+
+		var manifest pluginManifest
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			continue
+		}
+		if manifest.Version != "" {
+			return manifest.Version
+		}
 	}
-	return manifest.Version
+	return ""
 }
 
 func windowsLazyUpdateStampPath(pluginRoot string) string {
@@ -434,6 +473,14 @@ func getPluginRoot() string {
 		return root
 	}
 
+	// CodeBuddy Code aliases CLAUDE_PLUGIN_ROOT for plugin-bundled hooks, but
+	// also exports its own CODEBUDDY_PLUGIN_ROOT. Prefer it over the generic
+	// PLUGIN_ROOT so a CodeBuddy-managed install is never shadowed by an outer
+	// shell's inherited PLUGIN_ROOT.
+	if root := os.Getenv("CODEBUDDY_PLUGIN_ROOT"); root != "" {
+		return root
+	}
+
 	// Codex exports PLUGIN_ROOT for plugin-bundled hooks (it also sets
 	// CLAUDE_PLUGIN_ROOT for compatibility, so this is only a fallback).
 	if root := os.Getenv("PLUGIN_ROOT"); root != "" {
@@ -564,15 +611,17 @@ func printUsage() {
 	fmt.Printf("Version: %s\n", version)
 	fmt.Println()
 	fmt.Println("Usage:")
-	fmt.Println("  agent-notifications handle-hook <HookName>")
+	fmt.Println("  agent-notifications handle-hook <HookName> [--product <name>]")
 	fmt.Println("  agent-notifications daemon")
 	fmt.Println("  agent-notifications windows-hooks [--exe <path>]")
 	fmt.Println("  agent-notifications version")
 	fmt.Println("  agent-notifications help")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  handle-hook <HookName>  Handle a Claude Code hook event")
+	fmt.Println("  handle-hook <HookName>  Handle a Claude Code / Codex / CodeBuddy hook event")
 	fmt.Println("                          HookName: PreToolUse, Stop, SubagentStop, Notification")
+	fmt.Println("                          --product: pin the invoking product (codebuddy) when")
+	fmt.Println("                          the hook payload carries no product field")
 	fmt.Println("  daemon                  Run the notification daemon (Linux only)")
 	fmt.Println("                          For click-to-focus support on desktop notifications")
 	fmt.Println("  focus-window <bundleID> <cwd> [--ghostty-terminal-id <id>]")

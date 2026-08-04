@@ -253,6 +253,12 @@ func newTestHandler(t *testing.T, cfg *config.Config) (*Handler, *mockNotifier, 
 		notifierSvc:  mockNotif,
 		webhookSvc:   mockWH,
 		pluginRoot:   t.TempDir(),
+		// Default base product to Claude. The test process often inherits
+		// CODEBUDDY_* environment from the host CLI, which would otherwise make
+		// product.Detect report CodeBuddy for Claude-path payloads. Codex/
+		// opencode/CodeBuddy tests set an explicit product field or payload
+		// signal, which still wins over this default.
+		defaultProduct: "claude",
 	}
 
 	return handler, mockNotif, mockWH
@@ -352,6 +358,7 @@ func TestHandler_Stop_ReviewComplete(t *testing.T) {
 		SessionID:      "test-session-3",
 		TranscriptPath: transcriptPath,
 		CWD:            "/test",
+		Product:        "claude",
 	})
 
 	err := handler.HandleHook("Stop", hookData)

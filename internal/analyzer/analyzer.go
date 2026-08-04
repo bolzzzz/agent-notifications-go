@@ -22,10 +22,14 @@ import (
 //
 // Complexity: Medium-High. Edge cases are tricky (e.g. "cat file > output").
 var (
-	ActiveTools   = []string{"Write", "Edit", "Bash", "NotebookEdit", "SlashCommand", "KillShell"}
+	ActiveTools   = []string{"Write", "Edit", "Bash", "NotebookEdit", "SlashCommand", "KillShell", "PowerShell"}
 	QuestionTools = []string{"AskUserQuestion"}
-	PlanningTools = []string{"ExitPlanMode", "TodoWrite"}
-	PassiveTools  = []string{"Read", "Grep", "Glob", "WebFetch", "WebSearch", "Search", "Fetch", "Task"}
+	PlanningTools = []string{"ExitPlanMode", "TodoWrite", "TaskCreate", "TaskUpdate"}
+	// PassiveTools lists tools that observe or coordinate rather than mutate the
+	// user's codebase. CodeBuddy/agent tooling (Agent, Skill, TaskGet, TaskList,
+	// ToolSearch, SendMessage, DeferExecuteTool) falls here so a turn that only
+	// spawns sub-agents or inspects tasks is not misread as a completed edit.
+	PassiveTools = []string{"Read", "Grep", "Glob", "WebFetch", "WebSearch", "Search", "Fetch", "Task", "Agent", "TaskGet", "TaskList", "Skill", "ToolSearch", "DeferExecuteTool", "SendMessage"}
 )
 
 // Status represents the current task status
@@ -51,8 +55,16 @@ func AnalyzeTranscript(transcriptPath string, cfg *config.Config) (Status, error
 // AnalyzeTranscriptWithMessages analyzes a transcript and also returns the parsed messages.
 // This allows callers to reuse the messages (e.g., for summary generation) without re-reading the file.
 func AnalyzeTranscriptWithMessages(transcriptPath string, cfg *config.Config) (Status, []jsonl.Message, error) {
+	return AnalyzeTranscriptWithParser(transcriptPath, cfg, jsonl.ParseFile)
+}
+
+// AnalyzeTranscriptWithParser is like AnalyzeTranscriptWithMessages but delegates
+// file parsing to the supplied function. This lets the CodeBuddy Code plugin run
+// the same analyzer state machine against its own transcript format
+// (ParseCodeBuddyFile) without forking the detection logic.
+func AnalyzeTranscriptWithParser(transcriptPath string, cfg *config.Config, parse func(string) ([]jsonl.Message, error)) (Status, []jsonl.Message, error) {
 	// Parse JSONL file
-	messages, err := jsonl.ParseFile(transcriptPath)
+	messages, err := parse(transcriptPath)
 	if err != nil {
 		return StatusUnknown, nil, err
 	}
@@ -188,6 +200,10 @@ func GetStatusForPreToolUse(toolName string) Status {
 	case "AskUserQuestion", "request_user_input":
 		// request_user_input is the Codex equivalent of AskUserQuestion.
 		return StatusQuestion
+	case "EnterPlanMode":
+		// EnterPlanMode only transitions the agent into planning; no plan is
+		// ready yet, so it must not surface as a question/plan-ready event.
+		return StatusUnknown
 	}
 	return StatusUnknown
 }

@@ -94,6 +94,23 @@ type Handler struct {
 	notifierSvc  notifierInterface
 	webhookSvc   webhookInterface
 	pluginRoot   string
+	// productOverride pins the product when the hook payload carries no
+	// distinguishing field (CodeBuddy Code payloads are identical to Claude
+	// Code's). It is set from the --product flag by the CodeBuddy plugin and
+	// wins over the environment-only heuristic in product.Detect.
+	productOverride string
+	// defaultProduct is the base product used when neither an explicit product
+	// field nor heuristic signals identify the host. Tests set this to "claude"
+	// so leaked CODEBUDDY_* environment variables do not misroute Claude-path
+	// assertions; production leaves it empty (Detect returns "claude" by
+	// default anyway).
+	defaultProduct string
+}
+
+// SetProductOverride pins the invoking product. An empty value leaves product
+// detection to the payload/environment heuristic.
+func (h *Handler) SetProductOverride(product string) {
+	h.productOverride = product
 }
 
 // NewHandler creates a new hook handler
@@ -169,6 +186,13 @@ func (h *Handler) HandleHook(hookEvent string, input io.Reader) error {
 		return fmt.Errorf("failed to parse hook data: %w", err)
 	}
 	bench.Elapsed("stdin.parse")
+
+	// An explicit --product flag (CodeBuddy plugin) wins over payload/env
+	// detection. Backfill it onto the payload so the product.FromPayload calls
+	// below route correctly even when the host CLI sends no product field.
+	if h.productOverride != "" && hookData.Product == "" {
+		hookData.Product = h.productOverride
+	}
 
 	logging.Debug("Hook data: session=%s, transcript=%s, tool=%s",
 		hookData.SessionID, hookData.TranscriptPath, hookData.ToolName)
@@ -566,7 +590,7 @@ func skipUTF8BOM(input io.Reader) io.Reader {
 // Returns the parsed messages alongside the status so callers can reuse them
 // (e.g., for summary generation) without re-reading the transcript file.
 func (h *Handler) handleStopEvent(hookData *HookData) (analyzer.Status, []jsonl.Message, error) {
-	switch product.FromPayload(hookData.Product, hookData.TurnID, hookData.Model) {
+	switch product.FromPayloadWithDefault(hookData.Product, hookData.TurnID, hookData.Model, h.defaultProduct) {
 	case product.OpenCode:
 		// opencode: no transcript, no stable rollout format. The plugin sends
 		// last_assistant_message (Stop) and/or error_type (session.error), so
@@ -580,6 +604,25 @@ func (h *Handler) handleStopEvent(hookData *HookData) (analyzer.Status, []jsonl.
 		// from the payload instead of parsing the transcript.
 		status := codexStopStatus(hookData.LastAssistantMessage)
 		logging.Debug("Analyzed status (codex): %s", status)
+		return status, nil, nil
+	case product.CodeBuddy:
+		// CodeBuddy Code sends a Claude-compatible payload but writes its own
+		// transcript schema, so the Claude parser yields nothing. When a
+		// transcript is present we run the full analyzer against the normalized
+		// CodeBuddy format; otherwise (no file, or parse failed) we fall back to
+		// the payload-driven classification, which CodeBuddy mirrors from Codex
+		// via last_assistant_message.
+		if hookData.TranscriptPath != "" && platform.FileExists(hookData.TranscriptPath) {
+			status, messages, err := analyzer.AnalyzeTranscriptWithParser(hookData.TranscriptPath, h.cfg, jsonl.ParseCodeBuddyFile)
+			if err != nil {
+				logging.Warn("CodeBuddy transcript parse failed: %v", err)
+			} else {
+				logging.Debug("Analyzed status (codebuddy transcript): %s", status)
+				return status, messages, nil
+			}
+		}
+		status := codexStopStatus(hookData.LastAssistantMessage)
+		logging.Debug("Analyzed status (codebuddy payload fallback): %s", status)
 		return status, nil, nil
 	}
 
@@ -641,7 +684,7 @@ func (h *Handler) generateMessage(hookData *HookData, status analyzer.Status, me
 	// transcript (see handleStopEvent). opencode prefers the explicit Message
 	// field (question text, permission title), falling back to
 	// last_assistant_message for Stop events.
-	switch product.FromPayload(hookData.Product, hookData.TurnID, hookData.Model) {
+	switch product.FromPayloadWithDefault(hookData.Product, hookData.TurnID, hookData.Model, h.defaultProduct) {
 	case product.OpenCode:
 		body = summary.GenerateFromText(firstNonEmpty(hookData.Message, hookData.LastAssistantMessage), status, h.cfg)
 		if body == "" {
@@ -649,6 +692,17 @@ func (h *Handler) generateMessage(hookData *HookData, status analyzer.Status, me
 		}
 		return body, ""
 	case product.Codex:
+		body = summary.GenerateFromText(hookData.LastAssistantMessage, status, h.cfg)
+		if body == "" {
+			body = summary.GenerateSimple(status, h.cfg)
+		}
+		return body, ""
+	case product.CodeBuddy:
+		// When the transcript branch produced messages, reuse them for a rich
+		// action summary; otherwise fall back to the payload text.
+		if len(messages) > 0 {
+			break
+		}
 		body = summary.GenerateFromText(hookData.LastAssistantMessage, status, h.cfg)
 		if body == "" {
 			body = summary.GenerateSimple(status, h.cfg)

@@ -324,7 +324,7 @@ func mergeStatusOverrides(data []byte, config *Config, defaults map[string]Statu
 
 func expandEnv(value, pluginRoot string) string {
 	return os.Expand(value, func(key string) string {
-		if key == "CLAUDE_PLUGIN_ROOT" && pluginRoot != "" {
+		if pluginRoot != "" && (key == "CLAUDE_PLUGIN_ROOT" || key == "CODEBUDDY_PLUGIN_ROOT") {
 			return pluginRoot
 		}
 		return os.Getenv(key)
@@ -351,7 +351,8 @@ func GetStableConfigDir() (string, error) {
 
 // GetStableConfigDirs returns the stable config directories in preference
 // order. The Codex path lets Codex-only users keep config next to their other
-// Codex settings; the Claude path stays first for backward compatibility.
+// Codex settings; the CodeBuddy path does the same for CodeBuddy Code users;
+// the Claude path stays first for backward compatibility.
 func GetStableConfigDirs() ([]string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -360,6 +361,7 @@ func GetStableConfigDirs() ([]string, error) {
 	return []string{
 		filepath.Join(home, ".claude", "agent-notifications-go"),
 		filepath.Join(home, ".codex", "agent-notifications-go"),
+		filepath.Join(home, ".codebuddy", "agent-notifications-go"),
 	}, nil
 }
 

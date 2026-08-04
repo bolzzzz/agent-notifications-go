@@ -1,0 +1,19 @@
+{
+    "name": "agent-notifications-go",
+    "version": "1.40.1",
+    "description": "Smart notifications for CodeBuddy Code task statuses (Go implementation)",
+    "author": {
+        "name": "777genius",
+        "email": "iliyazelenkog@gmail.com"
+    },
+    "license": "GPL-3.0",
+    "repository": "https://github.com/777genius/agent-notifications-go",
+    "keywords": ["notifications", "alerts", "productivity", "go"],
+    "hooks": "./hooks/hooks-codebuddy.json",
+    "commands": [
+        "./commands/init.md",
+        "./commands/settings.md",
+        "./commands/notifications-init.md",
+        "./commands/notifications-settings.md"
+    ]
+}

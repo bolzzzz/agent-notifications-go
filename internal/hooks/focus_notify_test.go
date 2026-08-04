@@ -153,6 +153,7 @@ func TestHandleHook_FocusSuppressionDoesNotRecordLastNotificationOrCooldownQuest
 		SessionID:      sessionID,
 		TranscriptPath: transcriptPath,
 		CWD:            "/test",
+		Product:        "claude",
 	}))
 	assert.NoError(t, err)
 	assert.False(t, mockNotif.wasCalled(), "focused terminal should suppress the task_complete desktop notification")
@@ -199,6 +200,7 @@ func TestHandleHook_DelayDoesNotHoldContentLock(t *testing.T) {
 			SessionID:      sessionID,
 			TranscriptPath: transcriptPath,
 			CWD:            "/test",
+			Product:        "claude",
 		}))
 	}()
 
