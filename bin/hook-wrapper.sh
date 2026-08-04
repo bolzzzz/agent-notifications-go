@@ -253,10 +253,38 @@ if binary_ok; then
     # CLI did not set it (hooks configured directly in settings.json rather than
     # via the plugin manifest), derive it from the wrapper location so the binary
     # can locate its plugin root and manifest.
-    if [ -z "$CODEBUDDY_PLUGIN_ROOT" ]; then
-        CODEBUDDY_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+    #
+    # Only do this when the invoking host is actually CodeBuddy, detected via its
+    # session/project variables which it injects into every hook subprocess.
+    # Exporting the variable unconditionally would misidentify Claude Code hooks
+    # as CodeBuddy (product.Detect treats any CODEBUDDY_* variable as CodeBuddy),
+    # routing Claude transcripts through the CodeBuddy parser and dropping the
+    # notification with status unknown.
+    if [ -n "${CODEBUDDY_SESSION_ID:-}" ] || [ -n "${CODEBUDDY_PROJECT_DIR:-}" ]; then
+        if [ -z "$CODEBUDDY_PLUGIN_ROOT" ]; then
+            CODEBUDDY_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+        fi
+        export CODEBUDDY_PLUGIN_ROOT
+
+        # Mirror the pointer for CodeBuddy Code (~/.codebuddy/agent-notifications-go).
+        _CB_HOME="${CODEBUDDY_CONFIG_DIR:-${CODEBUDDY_HOME:-$HOME/.codebuddy}}"
+        if [ -z "$_CB_HOME" ]; then
+            _CB_HOME="$HOME/.codebuddy"
+        fi
+        _CB_PTR_DIR="$_CB_HOME/agent-notifications-go"
+        _CB_PTR_FILE="$_CB_PTR_DIR/plugin-root"
+        mkdir -p "$_CB_PTR_DIR" >/dev/null 2>&1 || true
+        _CB_PREV_PTR=""
+        if [ -f "$_CB_PTR_FILE" ]; then
+            IFS= read -r _CB_PREV_PTR < "$_CB_PTR_FILE" 2>/dev/null || true
+        fi
+        if [ "$_CB_PREV_PTR" != "$CODEBUDDY_PLUGIN_ROOT" ]; then
+            _CB_TMP_PTR="$_CB_PTR_FILE.tmp.$$"
+            printf '%s\n' "$CODEBUDDY_PLUGIN_ROOT" > "$_CB_TMP_PTR" 2>/dev/null && \
+                mv "$_CB_TMP_PTR" "$_CB_PTR_FILE" 2>/dev/null || true
+            rm -f "$_CB_TMP_PTR" 2>/dev/null || true
+        fi
     fi
-    export CODEBUDDY_PLUGIN_ROOT
 
     # Persist a stable pointer to the current plugin root outside the plugin cache.
     # This is a best-effort fallback for older cached paths and for shim wrappers.
@@ -276,25 +304,6 @@ if binary_ok; then
         printf '%s\n' "$CLAUDE_PLUGIN_ROOT" > "$_TMP_PTR" 2>/dev/null && \
             mv "$_TMP_PTR" "$_PTR_FILE" 2>/dev/null || true
         rm -f "$_TMP_PTR" 2>/dev/null || true
-    fi
-
-    # Mirror the pointer for CodeBuddy Code (~/.codebuddy/agent-notifications-go).
-    _CB_HOME="${CODEBUDDY_CONFIG_DIR:-${CODEBUDDY_HOME:-$HOME/.codebuddy}}"
-    if [ -z "$_CB_HOME" ]; then
-        _CB_HOME="$HOME/.codebuddy"
-    fi
-    _CB_PTR_DIR="$_CB_HOME/agent-notifications-go"
-    _CB_PTR_FILE="$_CB_PTR_DIR/plugin-root"
-    mkdir -p "$_CB_PTR_DIR" >/dev/null 2>&1 || true
-    _CB_PREV_PTR=""
-    if [ -f "$_CB_PTR_FILE" ]; then
-        IFS= read -r _CB_PREV_PTR < "$_CB_PTR_FILE" 2>/dev/null || true
-    fi
-    if [ "$_CB_PREV_PTR" != "$CODEBUDDY_PLUGIN_ROOT" ]; then
-        _CB_TMP_PTR="$_CB_PTR_FILE.tmp.$$"
-        printf '%s\n' "$CODEBUDDY_PLUGIN_ROOT" > "$_CB_TMP_PTR" 2>/dev/null && \
-            mv "$_CB_TMP_PTR" "$_CB_PTR_FILE" 2>/dev/null || true
-        rm -f "$_CB_TMP_PTR" 2>/dev/null || true
     fi
 
     run_binary "$@" || true
