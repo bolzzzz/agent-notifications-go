@@ -1574,7 +1574,7 @@ install_linux_notification_desktop_entry() {
 
     cat > "$tmp_file" << EOF
 [Desktop Entry]
-Name=codex-agent-notifications
+Name=Agent Notifications Go
 Type=Application
 Icon=utilities-terminal
 Exec=/usr/bin/true
