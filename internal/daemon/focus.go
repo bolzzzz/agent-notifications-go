@@ -109,14 +109,21 @@ func TryFocusWithHints(terminalName, folderName, cwdFolderName, workspaceName, w
 		// Query the mux for the window title of the specific WezTerm window containing
 		// our pane, then use activateBySubstring to raise exactly that window.
 		// This avoids raising the wrong instance when multiple WezTerm windows are open.
+		//
+		// wezterm's reported window_title can lag behind which tab is actually
+		// displayed (e.g. it keeps showing the title of whichever pane most recently
+		// pushed an OSC title update, even if a different tab is now focused). When
+		// that happens the substring won't match the window's real current title, so
+		// activateBySubstring returns false and no window is raised. Fall back to
+		// raising any WezTerm window by WM class — the pane switch below still lands
+		// on the correct tab, so this only matters for picking the right window when
+		// multiple WezTerm windows are open.
+		raised := false
 		if wt := wezTermWindowTitle(wezTermPaneID, wezTermSocket); wt != "" {
-			cmd := exec.Command("busctl", "--user", "call",
-				"org.gnome.Shell",
-				"/de/lucaswerkmeister/ActivateWindowByTitle",
-				"de.lucaswerkmeister.ActivateWindowByTitle",
-				"activateBySubstring", "s", wt,
-			)
-			cmd.CombinedOutput() //nolint:errcheck // best-effort; non-GNOME systems will fail here
+			raised = gnomeActivateWindow("activateBySubstring", wt)
+		}
+		if !raised {
+			gnomeActivateWindow("activateByWmClass", GetGnomeWmClass(terminalName))
 		}
 
 		// Sleep briefly so GNOME's XDG Activation Token is processed before switching
@@ -164,6 +171,21 @@ func uniqueNonEmpty(values ...string) []string {
 		result = append(result, value)
 	}
 	return result
+}
+
+// gnomeActivateWindow calls the activate-window-by-title GNOME extension method
+// (activateBySubstring, activateByWmClass, ...) and reports whether it actually
+// raised a window. busctl succeeds (exit 0) even when no window matched, so the
+// boolean result must be parsed out of its output.
+func gnomeActivateWindow(method, arg string) bool {
+	cmd := exec.Command("busctl", "--user", "call",
+		"org.gnome.Shell",
+		"/de/lucaswerkmeister/ActivateWindowByTitle",
+		"de.lucaswerkmeister.ActivateWindowByTitle",
+		method, "s", arg,
+	)
+	out, err := cmd.CombinedOutput()
+	return err == nil && strings.Contains(strings.TrimSpace(string(out)), "true")
 }
 
 // wezTermWindowTitle queries the WezTerm mux for the window title of the window
