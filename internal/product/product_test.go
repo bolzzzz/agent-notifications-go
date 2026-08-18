@@ -13,6 +13,9 @@ func clearProductEnv(t *testing.T) {
 	for _, name := range codeBuddyEnvVars {
 		t.Setenv(name, "")
 	}
+	for _, name := range cursorEnvVars {
+		t.Setenv(name, "")
+	}
 }
 
 func TestDetect(t *testing.T) {
@@ -82,6 +85,37 @@ func TestDetect(t *testing.T) {
 			t.Errorf("Detect() = %v, want %v", got, Claude)
 		}
 	})
+
+	for _, name := range cursorEnvVars {
+		t.Run(name+" means cursor", func(t *testing.T) {
+			clearProductEnv(t)
+			t.Setenv(name, "/some/path")
+			if got := Detect("", ""); got != Cursor {
+				t.Errorf("Detect(%s) = %v, want %v", name, got, Cursor)
+			}
+		})
+	}
+
+	// The Cursor stop payload always carries a model field, which would look
+	// like Codex; the CURSOR_* env must win.
+	t.Run("cursor wins over model heuristic", func(t *testing.T) {
+		clearProductEnv(t)
+		t.Setenv("CURSOR_PROJECT_DIR", "/repo")
+		if got := Detect("", "claude-4-sonnet"); got != Cursor {
+			t.Errorf("Detect(model) = %v, want %v", got, Cursor)
+		}
+	})
+
+	// CodeBuddy is checked before Cursor, so if both leaked into the env
+	// CodeBuddy must still win (its payload is otherwise indistinguishable).
+	t.Run("codebuddy wins over cursor env", func(t *testing.T) {
+		clearProductEnv(t)
+		t.Setenv("CURSOR_PROJECT_DIR", "/repo")
+		t.Setenv("CODEBUDDY_SESSION_ID", "sess-1")
+		if got := Detect("", ""); got != CodeBuddy {
+			t.Errorf("Detect() = %v, want %v", got, CodeBuddy)
+		}
+	})
 }
 
 func TestFromPayload(t *testing.T) {
@@ -139,6 +173,15 @@ func TestFromPayload(t *testing.T) {
 		clearProductEnv(t)
 		if got := FromPayload("some-other-tool", "turn-1", ""); got != Codex {
 			t.Errorf("FromPayload(unknown, turn_id) = %v, want %v", got, Codex)
+		}
+	})
+
+	// The Cursor install command pins --product cursor; that must win even
+	// though the payload's model field would otherwise be read as Codex.
+	t.Run("explicit cursor product overrides model heuristic", func(t *testing.T) {
+		clearProductEnv(t)
+		if got := FromPayload(Cursor, "", "claude-4-sonnet"); got != Cursor {
+			t.Errorf("FromPayload(cursor, model) = %v, want %v", got, Cursor)
 		}
 	})
 }

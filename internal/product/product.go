@@ -1,8 +1,8 @@
-// Package product identifies which AI CLI (Claude Code, Codex, opencode, or
-// CodeBuddy Code) is invoking the hook. Claude Code, Codex and CodeBuddy
-// deliver hook events as JSON over stdin, but opencode has no JSON-command
-// hooks — its TS plugin forwards events to this binary and carries an explicit
-// "product": "opencode" field.
+// Package product identifies which AI CLI (Claude Code, Codex, opencode,
+// CodeBuddy Code, or the Cursor CLI) is invoking the hook. Claude Code, Codex,
+// CodeBuddy and Cursor deliver hook events as JSON over stdin, but opencode has
+// no JSON-command hooks — its TS plugin forwards events to this binary and
+// carries an explicit "product": "opencode" field.
 //
 // Codex adds Codex-specific extension fields (turn_id, model) to every event
 // payload and exports PLUGIN_ROOT for plugin-bundled hooks, while Claude Code
@@ -14,6 +14,13 @@
 // it injects into every hook subprocess. Note that CodeBuddy also exports the
 // CLAUDE_* names as compatibility aliases, so CLAUDE_* must never be used as a
 // Claude Code signal.
+//
+// The Cursor CLI (`agent`/`cursor-agent`) runs hooks from ~/.cursor/hooks.json
+// and injects CURSOR_* environment variables into each hook subprocess. Its
+// stop payload also carries a model field that would otherwise match the Codex
+// heuristic, so CURSOR_* env (and the explicit "product": "cursor" /
+// --product cursor pin used by the install command) must win over Codex
+// detection.
 package product
 
 import "os"
@@ -27,6 +34,8 @@ const (
 	OpenCode = "opencode"
 	// CodeBuddy is Tencent's CodeBuddy Code CLI.
 	CodeBuddy = "codebuddy"
+	// Cursor is the Cursor CLI agent hooks host.
+	Cursor = "cursor"
 )
 
 // codeBuddyEnvVars are environment variables CodeBuddy Code injects into hook
@@ -39,12 +48,26 @@ var codeBuddyEnvVars = []string{
 	"CODEBUDDY_SESSION_ID",
 }
 
+// cursorEnvVars are environment variables the Cursor CLI injects into hook
+// subprocesses (documented in Cursor's hooks reference). CURSOR_PROJECT_DIR and
+// CURSOR_VERSION are always present for Agent hooks; CURSOR_TRANSCRIPT_PATH is
+// added when transcripts are enabled.
+var cursorEnvVars = []string{
+	"CURSOR_PROJECT_DIR",
+	"CURSOR_VERSION",
+	"CURSOR_TRANSCRIPT_PATH",
+}
+
 // Detect returns the product currently invoking the hook.
 //
 // CodeBuddy Code is checked first: its payload is indistinguishable from Claude
 // Code's, so only the environment can tell them apart. The check must also
 // precede the PLUGIN_ROOT heuristic below, because PLUGIN_ROOT may be inherited
 // from an outer shell and would otherwise misidentify CodeBuddy as Codex.
+//
+// Cursor is checked next: every Cursor stop payload carries a model field that
+// would otherwise match the Codex heuristic, so CURSOR_* env must win before
+// turn_id/model are consulted.
 //
 // Codex is then identified by either:
 //   - Codex-specific extension fields in the hook input JSON (turn_id is
@@ -58,6 +81,9 @@ func Detect(turnID, model string) string {
 	if isCodeBuddyEnv() {
 		return CodeBuddy
 	}
+	if isCursorEnv() {
+		return Cursor
+	}
 	if turnID != "" || model != "" {
 		return Codex
 	}
@@ -65,6 +91,17 @@ func Detect(turnID, model string) string {
 		return Codex
 	}
 	return Claude
+}
+
+// isCursorEnv reports whether any Cursor-specific environment variable is set
+// to a non-empty value.
+func isCursorEnv() bool {
+	for _, name := range cursorEnvVars {
+		if os.Getenv(name) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // isCodeBuddyEnv reports whether any CodeBuddy-specific environment variable is
@@ -84,7 +121,7 @@ func isCodeBuddyEnv() bool {
 // back to the heuristic signals.
 func FromPayload(product, turnID, model string) string {
 	switch product {
-	case OpenCode, Codex, CodeBuddy, Claude:
+	case OpenCode, Codex, CodeBuddy, Claude, Cursor:
 		return product
 	}
 	return Detect(turnID, model)
@@ -99,7 +136,7 @@ func FromPayload(product, turnID, model string) string {
 // defaultProduct disables the override entirely (production behavior).
 func FromPayloadWithDefault(product, turnID, model, defaultProduct string) string {
 	switch product {
-	case OpenCode, Codex, CodeBuddy, Claude:
+	case OpenCode, Codex, CodeBuddy, Claude, Cursor:
 		return product
 	}
 	if defaultProduct != "" && turnID == "" && model == "" {

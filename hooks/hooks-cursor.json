@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "./bin/cursor-notify.sh sessionStart",
+        "timeout": 30
+      }
+    ],
+    "stop": [
+      {
+        "command": "./bin/cursor-notify.sh stop",
+        "timeout": 30
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "./bin/cursor-notify.sh subagentStop",
+        "timeout": 30
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "./bin/cursor-notify.sh beforeShellExecution",
+        "timeout": 30
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "command": "./bin/cursor-notify.sh afterShellExecution",
+        "timeout": 30
+      }
+    ],
+    "beforeMCPExecution": [
+      {
+        "command": "./bin/cursor-notify.sh beforeMCPExecution",
+        "timeout": 30
+      }
+    ],
+    "afterMCPExecution": [
+      {
+        "command": "./bin/cursor-notify.sh afterMCPExecution",
+        "timeout": 30
+      }
+    ]
+  }
+}

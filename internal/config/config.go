@@ -9,13 +9,28 @@ import (
 
 	"github.com/777genius/agent-notifications-go/internal/logging"
 	"github.com/777genius/agent-notifications-go/internal/platform"
+	"github.com/777genius/agent-notifications-go/internal/product"
 )
 
 // Config represents the plugin configuration
 type Config struct {
 	Notifications NotificationsConfig   `json:"notifications"`
+	Cursor        CursorConfig          `json:"cursor,omitempty"`
 	Statuses      map[string]StatusInfo `json:"statuses"`
 	Debug         DebugConfig           `json:"debug,omitempty"`
+}
+
+// CursorConfig represents Cursor-specific behavior.
+type CursorConfig struct {
+	// NotifyOnApprovalWait sends a question notification when Cursor stays
+	// blocked on a shell/MCP approval prompt, default: true. Cursor fires its
+	// before* gates ahead of the approval decision, so this is only decided
+	// after approvalWaitSeconds; set false to stay silent on approval waits.
+	NotifyOnApprovalWait *bool `json:"notifyOnApprovalWait"`
+	// ApprovalWaitSeconds is how long a shell/MCP call must stay unresolved
+	// before it counts as waiting for the user, default: 8. Auto-approved calls
+	// normally finish (or are seen running) well inside this window.
+	ApprovalWaitSeconds *int `json:"approvalWaitSeconds"`
 }
 
 // DebugConfig represents debug/diagnostic settings
@@ -143,6 +158,16 @@ func stringPtr(v string) *string {
 
 const defaultSuppressQuestionAfterAnyNotificationSeconds = 7
 
+const (
+	// defaultCursorApprovalWaitSeconds is the grace period before an unresolved
+	// Cursor shell/MCP gate counts as waiting for the user.
+	defaultCursorApprovalWaitSeconds = 8
+	// maxCursorApprovalWaitSeconds bounds the grace period. The watcher is a
+	// detached process, so this only guards against a value that would outlive
+	// the turn it belongs to.
+	maxCursorApprovalWaitSeconds = 300
+)
+
 // DefaultConfig returns a config with sensible defaults
 func DefaultConfig() *Config {
 	return defaultConfig("")
@@ -204,6 +229,9 @@ func buildDefaultConfig(pluginRoot string) *Config {
 			},
 			SuppressQuestionAfterTaskCompleteSeconds:    intPtr(12),
 			SuppressQuestionAfterAnyNotificationSeconds: intPtr(defaultSuppressQuestionAfterAnyNotificationSeconds),
+		},
+		Cursor: CursorConfig{
+			ApprovalWaitSeconds: intPtr(defaultCursorApprovalWaitSeconds),
 		},
 		Statuses: map[string]StatusInfo{
 			"task_complete": {
@@ -339,71 +367,82 @@ func expandPath(value, pluginRoot string) string {
 	return filepath.Clean(expanded)
 }
 
-// GetStableConfigDir returns the stable config directory outside the plugin cache.
-// This directory survives plugin updates (bootstrap.sh rm -rf of cache).
+// GetStableConfigDir returns the Claude Code stable config directory outside
+// the plugin cache. Prefer GetStableConfigDirFor when the invoking product is
+// known — each host only reads its own config tree.
 func GetStableConfigDir() (string, error) {
+	return GetStableConfigDirFor(product.Claude)
+}
+
+// GetStableConfigDirFor returns the stable config directory for a product
+// (survives plugin-cache wipes). Empty / unknown product maps to Claude.
+//
+//	claude    → ~/.claude/agent-notifications-go
+//	codex     → ~/.codex/agent-notifications-go
+//	codebuddy → ~/.codebuddy/agent-notifications-go
+//	cursor    → ~/.cursor/agent-notifications-go
+//	opencode  → ~/.opencode/agent-notifications-go
+func GetStableConfigDirFor(productName string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(home, ".claude", "agent-notifications-go"), nil
-}
-
-// GetStableConfigDirs returns the stable config directories in preference
-// order. The Codex path lets Codex-only users keep config next to their other
-// Codex settings; the CodeBuddy path does the same for CodeBuddy Code users;
-// the Claude path stays first for backward compatibility.
-func GetStableConfigDirs() ([]string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("cannot determine home directory: %w", err)
+	var hostDir string
+	switch productName {
+	case product.Codex:
+		hostDir = ".codex"
+	case product.CodeBuddy:
+		hostDir = ".codebuddy"
+	case product.Cursor:
+		hostDir = ".cursor"
+	case product.OpenCode:
+		hostDir = ".opencode"
+	default:
+		hostDir = ".claude"
 	}
-	return []string{
-		filepath.Join(home, ".claude", "agent-notifications-go"),
-		filepath.Join(home, ".codex", "agent-notifications-go"),
-		filepath.Join(home, ".codebuddy", "agent-notifications-go"),
-	}, nil
+	return filepath.Join(home, hostDir, "agent-notifications-go"), nil
 }
 
-// GetStableConfigPath returns the stable config file path outside the plugin cache.
+// GetStableConfigPath returns the Claude Code stable config file path.
 func GetStableConfigPath() (string, error) {
-	dir, err := GetStableConfigDir()
+	return GetStableConfigPathFor(product.Claude)
+}
+
+// GetStableConfigPathFor returns the stable config.json path for a product.
+func GetStableConfigPathFor(productName string) (string, error) {
+	dir, err := GetStableConfigDirFor(productName)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(dir, "config.json"), nil
 }
 
-// LoadFromPluginRoot loads configuration with a resilient fallback chain:
-// 1. Stable path (~/.claude/agent-notifications-go/config.json) — preferred
-// 2. Old path (pluginRoot/config/config.json) — fallback, auto-migrates to stable
+// LoadFromPluginRoot loads configuration for the given product only:
+// 1. That product's stable path (~/.<host>/agent-notifications-go/config.json)
+// 2. Old path (pluginRoot/config/config.json) — fallback, auto-migrates to (1)
 // 3. Default config — if neither path has valid config
 //
-// Corrupted config files are non-fatal: a warning is printed to stderr and
-// logged, then the next source in the chain is tried.
-func LoadFromPluginRoot(pluginRoot string) (*Config, error) {
-	// 1. Try stable paths (~/.claude first, then ~/.codex)
-	stablePath, stableErr := GetStableConfigPath()
-	stableDirs, stableDirsErr := GetStableConfigDirs()
-	if stableErr != nil || stableDirsErr != nil {
+// Products never fall back to another host's config (e.g. Cursor does not read
+// ~/.claude/...). Empty productName is treated as Claude. Corrupted config
+// files are non-fatal: a warning is printed to stderr and logged, then the
+// next source in the chain is tried.
+func LoadFromPluginRoot(pluginRoot, productName string) (*Config, error) {
+	if productName == "" {
+		productName = product.Claude
+	}
+
+	stablePath, stableErr := GetStableConfigPathFor(productName)
+	if stableErr != nil {
 		msg := fmt.Sprintf("warning: cannot resolve stable config path: %v, using legacy path only", stableErr)
 		fmt.Fprintln(os.Stderr, msg)
 		logging.Warn("%s", msg)
-	}
-	if stableDirsErr == nil {
-		for _, dir := range stableDirs {
-			candidate := filepath.Join(dir, "config.json")
-			if !platform.FileExists(candidate) {
-				continue
-			}
-			cfg, err := load(candidate, pluginRoot)
-			if err != nil {
-				// Corrupted stable config — warn and try the next source
-				msg := fmt.Sprintf("warning: failed to load config from %s: %v, trying next path", candidate, err)
-				fmt.Fprintln(os.Stderr, msg)
-				logging.Warn("%s", msg)
-				continue
-			}
+	} else if platform.FileExists(stablePath) {
+		cfg, err := load(stablePath, pluginRoot)
+		if err != nil {
+			msg := fmt.Sprintf("warning: failed to load config from %s: %v, trying legacy path", stablePath, err)
+			fmt.Fprintln(os.Stderr, msg)
+			logging.Warn("%s", msg)
+		} else {
 			return cfg, nil
 		}
 	}
@@ -420,7 +459,7 @@ func LoadFromPluginRoot(pluginRoot string) (*Config, error) {
 			return defaultConfig(pluginRoot), nil
 		}
 
-		// Migrate to stable path (best-effort)
+		// Migrate to this product's stable path (best-effort)
 		if stableErr == nil && stablePath != "" {
 			if migErr := migrateConfig(oldPath, stablePath); migErr != nil {
 				msg := fmt.Sprintf("warning: config migration failed: %v", migErr)
@@ -508,6 +547,11 @@ func (c *Config) applyDefaults(pluginRoot string) {
 		c.Notifications.SuppressQuestionAfterAnyNotificationSeconds = intPtr(defaultSuppressQuestionAfterAnyNotificationSeconds)
 	}
 
+	// Cursor approval-wait defaults
+	if c.Cursor.ApprovalWaitSeconds == nil {
+		c.Cursor.ApprovalWaitSeconds = intPtr(defaultCursorApprovalWaitSeconds)
+	}
+
 	// Status defaults
 	defaults := defaultConfig(pluginRoot)
 	if c.Statuses == nil {
@@ -576,6 +620,18 @@ func (c *Config) Validate() error {
 	}
 	if c.Notifications.NotifyDelaySeconds != nil && *c.Notifications.NotifyDelaySeconds < 0 {
 		return fmt.Errorf("notifyDelaySeconds must be >= 0")
+	}
+
+	// Validate the Cursor approval-wait grace period. Zero would classify every
+	// auto-approved call as a wait, so disabling the notification is done with
+	// cursor.notifyOnApprovalWait instead.
+	if c.Cursor.ApprovalWaitSeconds != nil {
+		if *c.Cursor.ApprovalWaitSeconds < 1 {
+			return fmt.Errorf("cursor.approvalWaitSeconds must be >= 1 (use cursor.notifyOnApprovalWait=false to disable approval-wait notifications)")
+		}
+		if *c.Cursor.ApprovalWaitSeconds > maxCursorApprovalWaitSeconds {
+			return fmt.Errorf("cursor.approvalWaitSeconds must be <= %d", maxCursorApprovalWaitSeconds)
+		}
 	}
 
 	// Validate teamMode
@@ -659,6 +715,24 @@ func (c *Config) GetSuppressQuestionAfterAnyNotificationSeconds() int {
 		return defaultSuppressQuestionAfterAnyNotificationSeconds
 	}
 	return *c.Notifications.SuppressQuestionAfterAnyNotificationSeconds
+}
+
+// ShouldNotifyOnCursorApprovalWait returns true if a notification should be
+// sent when Cursor stays blocked on a shell/MCP approval prompt (default: true)
+func (c *Config) ShouldNotifyOnCursorApprovalWait() bool {
+	if c.Cursor.NotifyOnApprovalWait == nil {
+		return true
+	}
+	return *c.Cursor.NotifyOnApprovalWait
+}
+
+// GetCursorApprovalWaitSeconds returns how long a Cursor shell/MCP call must
+// stay unresolved before it counts as waiting for the user (default: 8)
+func (c *Config) GetCursorApprovalWaitSeconds() int {
+	if c.Cursor.ApprovalWaitSeconds == nil {
+		return defaultCursorApprovalWaitSeconds
+	}
+	return *c.Cursor.ApprovalWaitSeconds
 }
 
 // ShouldNotifyOnTextResponse returns true if notifications should be sent for text-only responses (default: true)

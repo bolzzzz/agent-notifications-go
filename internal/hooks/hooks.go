@@ -71,6 +71,15 @@ type HookData struct {
 	// Team-related fields (present in TeammateIdle, TaskCreated, TaskCompleted hooks)
 	TeamName     string `json:"team_name,omitempty"`
 	TeammateName string `json:"teammate_name,omitempty"`
+	// Cursor CLI-specific fields. Cursor uses conversation_id instead of
+	// session_id, provides workspace_roots rather than cwd, and its stop /
+	// subagentStop payloads carry a status ("completed" | "aborted" | "error")
+	// and (subagentStop only) a summary. transcript_path may be null when
+	// transcripts are disabled, in which case status alone drives classification.
+	ConversationID string   `json:"conversation_id,omitempty"`
+	Status         string   `json:"status,omitempty"`
+	Summary        string   `json:"summary,omitempty"`
+	WorkspaceRoots []string `json:"workspace_roots,omitempty"`
 }
 
 // notifierInterface defines the interface for sending desktop notifications
@@ -113,10 +122,11 @@ func (h *Handler) SetProductOverride(product string) {
 	h.productOverride = product
 }
 
-// NewHandler creates a new hook handler
-func NewHandler(pluginRoot string) (*Handler, error) {
-	// Load config
-	cfg, err := config.LoadFromPluginRoot(pluginRoot)
+// NewHandler creates a new hook handler for the given product. Config is loaded
+// only from that product's stable path (see config.LoadFromPluginRoot); empty
+// productName defaults to Claude.
+func NewHandler(pluginRoot, productName string) (*Handler, error) {
+	cfg, err := config.LoadFromPluginRoot(pluginRoot, productName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
@@ -127,13 +137,14 @@ func NewHandler(pluginRoot string) (*Handler, error) {
 	}
 
 	return &Handler{
-		cfg:          cfg,
-		dedupMgr:     dedup.NewManager(),
-		stateMgr:     state.NewManager(),
-		teamStateMgr: teamstate.NewManager(""),
-		notifierSvc:  notifier.New(cfg),
-		webhookSvc:   webhook.New(cfg),
-		pluginRoot:   pluginRoot,
+		cfg:             cfg,
+		dedupMgr:        dedup.NewManager(),
+		stateMgr:        state.NewManager(),
+		teamStateMgr:    teamstate.NewManager(""),
+		notifierSvc:     notifier.New(cfg),
+		webhookSvc:      webhook.New(cfg),
+		pluginRoot:      pluginRoot,
+		productOverride: productName,
 	}, nil
 }
 
@@ -192,6 +203,14 @@ func (h *Handler) HandleHook(hookEvent string, input io.Reader) error {
 	// below route correctly even when the host CLI sends no product field.
 	if h.productOverride != "" && hookData.Product == "" {
 		hookData.Product = h.productOverride
+	}
+
+	// Cursor CLI payloads use a different envelope (conversation_id,
+	// workspace_roots) and expose the transcript path via CURSOR_TRANSCRIPT_PATH
+	// rather than the payload. Normalize these onto the shared fields so the
+	// rest of the pipeline (state, cwd/git, transcript analysis) is unchanged.
+	if product.FromPayloadWithDefault(hookData.Product, hookData.TurnID, hookData.Model, h.defaultProduct) == product.Cursor {
+		normalizeCursorHookData(&hookData)
 	}
 
 	logging.Debug("Hook data: session=%s, transcript=%s, tool=%s",
@@ -624,6 +643,8 @@ func (h *Handler) handleStopEvent(hookData *HookData) (analyzer.Status, []jsonl.
 		status := codexStopStatus(hookData.LastAssistantMessage)
 		logging.Debug("Analyzed status (codebuddy payload fallback): %s", status)
 		return status, nil, nil
+	case product.Cursor:
+		return h.cursorStopStatus(hookData)
 	}
 
 	if hookData.TranscriptPath == "" {
@@ -704,6 +725,20 @@ func (h *Handler) generateMessage(hookData *HookData, status analyzer.Status, me
 			break
 		}
 		body = summary.GenerateFromText(hookData.LastAssistantMessage, status, h.cfg)
+		if body == "" {
+			body = summary.GenerateSimple(status, h.cfg)
+		}
+		return body, ""
+	case product.Cursor:
+		// With a parsed transcript, fall through to the shared structured
+		// summary for a rich body + action counts. Without one (transcripts
+		// disabled), fall back to the payload text: Message carries the
+		// approval-wait body synthesized by cursor-approval-watch, Summary the
+		// subagentStop summary field.
+		if len(messages) > 0 {
+			break
+		}
+		body = summary.GenerateFromText(firstNonEmpty(hookData.Message, hookData.Summary), status, h.cfg)
 		if body == "" {
 			body = summary.GenerateSimple(status, h.cfg)
 		}

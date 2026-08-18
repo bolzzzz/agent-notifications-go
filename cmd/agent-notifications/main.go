@@ -16,6 +16,7 @@ import (
 	"github.com/777genius/agent-notifications-go/internal/hooks"
 	"github.com/777genius/agent-notifications-go/internal/logging"
 	"github.com/777genius/agent-notifications-go/internal/notifier"
+	"github.com/777genius/agent-notifications-go/internal/product"
 	"github.com/777genius/agent-notifications-go/internal/winfocus"
 )
 
@@ -83,10 +84,22 @@ func main() {
 		runFocusWindows(os.Args[2:])
 	case "play-sound":
 		runPlaySound(os.Args[2:])
+	case cursorApprovalWatchCommand:
+		runCursorApprovalWatch(os.Args[2:])
 	case "daemon", "--daemon":
 		runDaemon()
 	case "windows-hooks":
 		runWindowsHooks(os.Args[2:])
+	case "install-cursor-hooks":
+		if err := runInstallCursorHooks(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "install-cursor-hooks: %v\n", err)
+			os.Exit(1)
+		}
+	case "uninstall-cursor-hooks":
+		if err := runUninstallCursorHooks(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "uninstall-cursor-hooks: %v\n", err)
+			os.Exit(1)
+		}
 	case "version", "--version", "-v":
 		fmt.Printf("agent-notifications v%s\n", version)
 	case "help", "--help", "-h":
@@ -248,14 +261,38 @@ func handleHook(hookEvent, productOverride string) {
 		os.Exit(1)
 	}
 	defer func() { _ = logging.Close() }()
+	logging.SetPrefix(fmt.Sprintf("PID:%d", os.Getpid()))
 
-	// Create handler
-	handler, err := hooks.NewHandler(pluginRoot)
+	// Cursor has no hook for "auto-review decided this needs you", so shell/MCP
+	// approval waits are observed through its before* gates. Those fire before
+	// Cursor decides whether the call needs the user, so they only record the
+	// call and let a detached watcher notify if it is still unresolved later;
+	// the after* events cancel that watcher. The allow decision states that this
+	// hook has no objection and leaves Cursor's own approval policy in charge.
+	if kind, ok := cursorApprovalGateKind(hookEvent); ok {
+		runCursorApprovalGate(pluginRoot, kind, os.Stdin)
+		fmt.Println(`{"permission":"allow"}`)
+		return
+	}
+	if isCursorExecutionDoneEvent(hookEvent) {
+		runCursorExecutionDone(pluginRoot, os.Stdin)
+		return
+	}
+
+	// Resolve product before loading config so each host only reads its own
+	// ~/.<host>/agent-notifications-go/config.json. Prefer --product; otherwise
+	// use env heuristics (CURSOR_*, CODEBUDDY_*, PLUGIN_ROOT). Payload fields
+	// (turn_id/model/product) are not available yet.
+	resolvedProduct := productOverride
+	if resolvedProduct == "" {
+		resolvedProduct = product.Detect("", "")
+	}
+
+	handler, err := hooks.NewHandler(pluginRoot, resolvedProduct)
 	if err != nil {
 		errorhandler.HandleCriticalError(err, "Failed to create handler")
 		os.Exit(1)
 	}
-	handler.SetProductOverride(productOverride)
 
 	// Handle hook
 	if err := handler.HandleHook(hookEvent, os.Stdin); err != nil {
@@ -614,22 +651,33 @@ func printUsage() {
 	fmt.Println("  agent-notifications handle-hook <HookName> [--product <name>]")
 	fmt.Println("  agent-notifications daemon")
 	fmt.Println("  agent-notifications windows-hooks [--exe <path>]")
+	fmt.Println("  agent-notifications install-cursor-hooks [--exe <path>] [--hooks-path <path>]")
+	fmt.Println("  agent-notifications uninstall-cursor-hooks [--hooks-path <path>]")
 	fmt.Println("  agent-notifications version")
 	fmt.Println("  agent-notifications help")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  handle-hook <HookName>  Handle a Claude Code / Codex / CodeBuddy hook event")
-	fmt.Println("                          HookName: PreToolUse, Stop, SubagentStop, Notification")
-	fmt.Println("                          --product: pin the invoking product (codebuddy) when")
-	fmt.Println("                          the hook payload carries no product field")
+	fmt.Println("  handle-hook <HookName>  Handle a Claude Code / Codex / CodeBuddy / Cursor hook event")
+	fmt.Println("                          HookName: PreToolUse, Stop, SubagentStop, Notification, SessionStart")
+	fmt.Println("                          --product: pin the invoking product (claude|codex|codebuddy|cursor|opencode);")
+	fmt.Println("                          also selects that host's ~/.<host>/agent-notifications-go/config.json")
 	fmt.Println("  daemon                  Run the notification daemon (Linux only)")
 	fmt.Println("                          For click-to-focus support on desktop notifications")
 	fmt.Println("  focus-window <bundleID> <cwd> [--ghostty-terminal-id <id>]")
 	fmt.Println("                          Focus specific app window (internal, used by click-to-focus)")
 	fmt.Println("  focus-windows <uri>     Raise the terminal window encoded in a click-to-focus URI")
 	fmt.Println("                          (internal, Windows; invoked by the toast protocol handler)")
+	fmt.Println("  cursor-approval-watch --key <key>")
+	fmt.Println("                          Notify if a Cursor shell/MCP call is still waiting for")
+	fmt.Println("                          approval (internal, spawned by the before* gates)")
 	fmt.Println("  windows-hooks           Print exec-form hook JSON for Windows settings")
 	fmt.Println("                          Does not modify ~/.claude/settings.json")
+	fmt.Println("  install-cursor-hooks    Merge Cursor CLI hooks into ~/.cursor/hooks.json")
+	fmt.Println("                          (sessionStart, stop, subagentStop, and the shell/MCP")
+	fmt.Println("                          before*/after* pair used to detect approval waits).")
+	fmt.Println("                          Existing unrelated Cursor hooks are preserved; re-run")
+	fmt.Println("                          after moving the binary")
+	fmt.Println("  uninstall-cursor-hooks  Remove only agent-notifications Cursor CLI hooks")
 	fmt.Println("  version                 Show version information")
 	fmt.Println("  help                    Show this help message")
 	fmt.Println()

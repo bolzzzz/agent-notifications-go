@@ -107,7 +107,7 @@ function runHook(hookEvent: string, payload: HookPayload, onMissingBinary?: () =
 
   let child: ReturnType<typeof spawn>
   try {
-    child = spawn(resolved.bin, ["handle-hook", hookEvent], {
+    child = spawn(resolved.bin, ["handle-hook", hookEvent, "--product", PRODUCT], {
       stdio: ["pipe", "ignore", "ignore"],
       env,
       windowsHide: true,

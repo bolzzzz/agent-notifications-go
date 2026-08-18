@@ -273,7 +273,7 @@ func TestLoadFromPluginRoot_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load config from plugin root
-	cfg, err := LoadFromPluginRoot(tmpDir)
+	cfg, err := LoadFromPluginRoot(tmpDir, "")
 
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -289,7 +289,7 @@ func TestLoadFromPluginRoot_NoConfigFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Should return default config without error
-	cfg, err := LoadFromPluginRoot(tmpDir)
+	cfg, err := LoadFromPluginRoot(tmpDir, "")
 
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -310,7 +310,7 @@ func TestLoadFromPluginRoot_MalformedJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	// Corrupted config is non-fatal: returns defaults instead of error
-	cfg, err := LoadFromPluginRoot(tmpDir)
+	cfg, err := LoadFromPluginRoot(tmpDir, "")
 
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -324,7 +324,7 @@ func TestLoadFromPluginRoot_NonexistentRoot(t *testing.T) {
 	nonexistentDir := "/nonexistent/plugin/root"
 
 	// Should return default config (file doesn't exist)
-	cfg, err := LoadFromPluginRoot(nonexistentDir)
+	cfg, err := LoadFromPluginRoot(nonexistentDir, "")
 
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -335,7 +335,7 @@ func TestLoadFromPluginRoot_EmptyRoot(t *testing.T) {
 	setTestHome(t, t.TempDir())
 
 	// Empty string as plugin root
-	cfg, err := LoadFromPluginRoot("")
+	cfg, err := LoadFromPluginRoot("", "")
 
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -364,7 +364,7 @@ func TestLoadFromPluginRoot_WithEnvironmentVariables(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load config - should expand environment variables
-	cfg, err := LoadFromPluginRoot(tmpDir)
+	cfg, err := LoadFromPluginRoot(tmpDir, "")
 
 	require.NoError(t, err)
 	assert.Equal(t, "https://example.com/hook", cfg.Notifications.Webhook.URL)
@@ -393,7 +393,7 @@ func TestLoadFromPluginRoot_ExpandsUnsetPluginRootFromResolvedPath(t *testing.T)
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	if err != nil {
 		t.Fatalf("LoadFromPluginRoot() error = %v", err)
 	}
@@ -429,7 +429,7 @@ func TestLoadFromPluginRoot_PreservesDollarInDefaultPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,7 +452,7 @@ func TestLoadFromPluginRoot_NullStatusesUseResolvedRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1256,6 +1256,31 @@ func TestGetStableConfigPath(t *testing.T) {
 	assert.Equal(t, filepath.Join(home, ".claude", "agent-notifications-go", "config.json"), path)
 }
 
+func TestGetStableConfigPathFor_Products(t *testing.T) {
+	home := t.TempDir()
+	setTestHome(t, home)
+
+	cases := []struct {
+		product string
+		hostDir string
+	}{
+		{"claude", ".claude"},
+		{"codex", ".codex"},
+		{"codebuddy", ".codebuddy"},
+		{"cursor", ".cursor"},
+		{"opencode", ".opencode"},
+		{"", ".claude"},
+		{"unknown", ".claude"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.product, func(t *testing.T) {
+			path, err := GetStableConfigPathFor(tc.product)
+			require.NoError(t, err)
+			assert.Equal(t, filepath.Join(home, tc.hostDir, "agent-notifications-go", "config.json"), path)
+		})
+	}
+}
+
 func TestGetStableConfigPath_NoHome(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("HOME isolation not applicable on Windows (uses USERPROFILE)")
@@ -1283,11 +1308,44 @@ func TestLoadFromPluginRoot_StablePathFirst(t *testing.T) {
 	// No config at old path
 	pluginRoot := t.TempDir()
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	require.NoError(t, err)
 	assert.False(t, cfg.Notifications.Desktop.Enabled)
 	assert.True(t, cfg.Notifications.Webhook.Enabled)
 	assert.Equal(t, "https://stable.example.com", cfg.Notifications.Webhook.URL)
+}
+
+func TestLoadFromPluginRoot_ProductIgnoresOtherHostConfig(t *testing.T) {
+	home := t.TempDir()
+	setTestHome(t, home)
+
+	// Claude has a distinctive config; Cursor must not pick it up.
+	claudeDir := filepath.Join(home, ".claude", "agent-notifications-go")
+	require.NoError(t, os.MkdirAll(claudeDir, 0700))
+	claudeConfig := `{"notifications":{"desktop":{"enabled":false},"webhook":{"enabled":true,"url":"https://claude-only.example.com"}}}`
+	require.NoError(t, os.WriteFile(filepath.Join(claudeDir, "config.json"), []byte(claudeConfig), 0600))
+
+	cursorDir := filepath.Join(home, ".cursor", "agent-notifications-go")
+	require.NoError(t, os.MkdirAll(cursorDir, 0700))
+	cursorConfig := `{"notifications":{"desktop":{"enabled":true},"webhook":{"enabled":true,"url":"https://cursor-only.example.com"}}}`
+	require.NoError(t, os.WriteFile(filepath.Join(cursorDir, "config.json"), []byte(cursorConfig), 0600))
+
+	pluginRoot := t.TempDir()
+
+	cursorCfg, err := LoadFromPluginRoot(pluginRoot, "cursor")
+	require.NoError(t, err)
+	assert.Equal(t, "https://cursor-only.example.com", cursorCfg.Notifications.Webhook.URL)
+
+	claudeCfg, err := LoadFromPluginRoot(pluginRoot, "claude")
+	require.NoError(t, err)
+	assert.Equal(t, "https://claude-only.example.com", claudeCfg.Notifications.Webhook.URL)
+
+	// Cursor with no own config falls to defaults, not Claude's file.
+	require.NoError(t, os.Remove(filepath.Join(cursorDir, "config.json")))
+	cursorDefault, err := LoadFromPluginRoot(pluginRoot, "cursor")
+	require.NoError(t, err)
+	assert.True(t, cursorDefault.Notifications.Desktop.Enabled)
+	assert.NotEqual(t, "https://claude-only.example.com", cursorDefault.Notifications.Webhook.URL)
 }
 
 func TestLoadFromPluginRoot_MigratesFromOldPath(t *testing.T) {
@@ -1302,7 +1360,7 @@ func TestLoadFromPluginRoot_MigratesFromOldPath(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte(oldConfig), 0644))
 
 	// Load — should read from old path and migrate
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	require.NoError(t, err)
 	assert.False(t, cfg.Notifications.Desktop.Enabled)
 	assert.Equal(t, "https://old.example.com", cfg.Notifications.Webhook.URL)
@@ -1340,7 +1398,7 @@ func TestLoadFromPluginRoot_StableTakesPriority(t *testing.T) {
 	oldConfig := `{"notifications":{"webhook":{"enabled":true,"url":"https://old.example.com"}}}`
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte(oldConfig), 0644))
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	require.NoError(t, err)
 	assert.Equal(t, "https://stable.example.com", cfg.Notifications.Webhook.URL, "stable path should take priority")
 }
@@ -1361,7 +1419,7 @@ func TestLoadFromPluginRoot_CorruptedStableFallsBackToOld(t *testing.T) {
 	oldConfig := `{"notifications":{"webhook":{"enabled":true,"url":"https://old.example.com"}}}`
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte(oldConfig), 0644))
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	require.NoError(t, err)
 	assert.Equal(t, "https://old.example.com", cfg.Notifications.Webhook.URL, "should fall back to old path")
 }
@@ -1381,7 +1439,7 @@ func TestLoadFromPluginRoot_CorruptedBothFallsToDefault(t *testing.T) {
 	require.NoError(t, os.MkdirAll(configDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte("{ also broken }"), 0644))
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.True(t, cfg.Notifications.Desktop.Enabled, "should return defaults")
@@ -1393,7 +1451,7 @@ func TestLoadFromPluginRoot_NeitherPath_ReturnsDefaults(t *testing.T) {
 
 	pluginRoot := t.TempDir()
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.True(t, cfg.Notifications.Desktop.Enabled, "should return defaults")
@@ -1424,7 +1482,7 @@ func TestLoadFromPluginRoot_MigrationFails_StillLoadsOldPath(t *testing.T) {
 	oldConfig := `{"notifications":{"webhook":{"enabled":true,"url":"https://old.example.com"}}}`
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte(oldConfig), 0644))
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	require.NoError(t, err)
 	assert.Equal(t, "https://old.example.com", cfg.Notifications.Webhook.URL, "should still load from old path")
 }
@@ -1440,7 +1498,7 @@ func TestLoadFromPluginRoot_OldPathMalformed_ReturnsDefault(t *testing.T) {
 	require.NoError(t, os.MkdirAll(configDir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.json"), []byte("not json at all"), 0644))
 
-	cfg, err := LoadFromPluginRoot(pluginRoot)
+	cfg, err := LoadFromPluginRoot(pluginRoot, "")
 	require.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.True(t, cfg.Notifications.Desktop.Enabled, "should return defaults for corrupted old config")

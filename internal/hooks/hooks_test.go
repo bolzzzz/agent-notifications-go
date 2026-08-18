@@ -226,13 +226,25 @@ func newTestHandler(t *testing.T, cfg *config.Config) (*Handler, *mockNotifier, 
 	// Tests that need judge mode set should call t.Setenv AFTER calling newTestHandler
 	t.Setenv("CLAUDE_HOOK_JUDGE_MODE", "")
 
-	// Cleanup state/lock files from previous test runs
+	// Clear Cursor env vars so product detection is deterministic. The test
+	// suite is often run *inside* the Cursor CLI, which exports CURSOR_* into
+	// every subprocess; without this, product.Detect would report Cursor for
+	// every Codex/opencode/CodeBuddy-path payload and shadow their signals.
+	for _, name := range []string{"CURSOR_PROJECT_DIR", "CURSOR_VERSION", "CURSOR_TRANSCRIPT_PATH"} {
+		t.Setenv(name, "")
+	}
+
+	// Cleanup state/lock files from previous test runs.
 	// This prevents duplicate detection issues on fast Go versions (1.25+)
-	// where tests run faster than the 180-second duplicate window
+	// where tests run faster than the 180-second duplicate window. The globs
+	// cover every product's test sessions (codex-*, cursor-*, codebuddy-*,
+	// opencode-*, …), not just "test-*"; those product Stop tests reuse fixed
+	// session IDs, so a stale session-state file from an earlier local run
+	// would otherwise suppress the notification as a duplicate.
 	testSessionPatterns := []string{
-		"claude-session-state-test-*.json",
-		"claude-notification-test-*.lock",
-		"claude-content-lock-test-*.lock",
+		"claude-session-state-*.json",
+		"claude-notification-*.lock",
+		"claude-content-lock-*.lock",
 	}
 	tempDir := os.TempDir()
 	for _, pattern := range testSessionPatterns {
@@ -1149,7 +1161,7 @@ func TestNewHandler_Success(t *testing.T) {
 	}
 
 	// Create handler
-	handler, err := NewHandler(tmpDir)
+	handler, err := NewHandler(tmpDir, "")
 
 	if err != nil {
 		t.Fatalf("NewHandler failed: %v", err)
@@ -1195,7 +1207,7 @@ func TestNewHandler_WithDefaultConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// NewHandler should use default config
-	handler, err := NewHandler(tmpDir)
+	handler, err := NewHandler(tmpDir, "")
 
 	if err != nil {
 		t.Fatalf("NewHandler with defaults failed: %v", err)
@@ -1241,7 +1253,7 @@ func TestNewHandler_InvalidConfig(t *testing.T) {
 	}
 
 	// NewHandler should fail validation
-	handler, err := NewHandler(tmpDir)
+	handler, err := NewHandler(tmpDir, "")
 
 	if err == nil {
 		t.Fatal("expected error for invalid config, got nil")
@@ -1276,7 +1288,7 @@ func TestNewHandler_MalformedJSON(t *testing.T) {
 	}
 
 	// Malformed JSON is now non-fatal — returns defaults (handler should succeed)
-	handler, err := NewHandler(tmpDir)
+	handler, err := NewHandler(tmpDir, "")
 
 	if err != nil {
 		t.Fatalf("unexpected error for malformed JSON (should return defaults): %v", err)
@@ -1302,7 +1314,7 @@ func TestNewHandler_NonexistentPluginRoot(t *testing.T) {
 	nonexistentDir := "/nonexistent/plugin/root/path"
 
 	// NewHandler should still work (config will use defaults)
-	handler, err := NewHandler(nonexistentDir)
+	handler, err := NewHandler(nonexistentDir, "")
 
 	if err != nil {
 		t.Fatalf("NewHandler with nonexistent root failed: %v", err)
@@ -1322,7 +1334,7 @@ func TestNewHandler_EmptyPluginRoot(t *testing.T) {
 	setTestHome(t, t.TempDir()) // isolate stable config path
 
 	// Empty string as plugin root
-	handler, err := NewHandler("")
+	handler, err := NewHandler("", "")
 
 	if err != nil {
 		t.Fatalf("NewHandler with empty root failed: %v", err)
