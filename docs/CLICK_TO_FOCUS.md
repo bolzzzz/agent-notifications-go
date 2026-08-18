@@ -56,6 +56,7 @@ Uses a background D-Bus daemon. Auto-detects terminal and compositor.
 | Terminal | Supported compositors |
 |----------|----------------------|
 | VS Code | GNOME, KDE, Sway, X11 |
+| Cursor IDE | GNOME, KDE, Sway, X11 |
 | GNOME Terminal, Konsole, Alacritty, kitty, WezTerm, Tilix, Terminator, XFCE4 Terminal, MATE Terminal | GNOME, KDE, Sway, X11 |
 | Any other | Fallback by name |
 
@@ -97,6 +98,22 @@ works because the plugin uses substring matching.
 [activate-window-by-title](https://extensions.gnome.org/extension/5021/activate-window-by-title/)
 from the GNOME Extensions website. Without it, GNOME Wayland has no way to
 focus a specific window among multiple instances of the same app.
+
+### Cursor IDE (Linux)
+
+Cursor IDE and the Cursor CLI share `~/.cursor/hooks.json`, so IDE agent turns
+already raise notifications. Click-to-focus treats the hook as Cursor IDE when
+`CURSOR_*` is set and the process looks editor-hosted (`TERM_PROGRAM` empty or
+`vscode`, or `VSCODE_*` present). Cursor CLI running in a real terminal keeps
+that terminal (`TERM_PROGRAM=kitty`, Ghostty, …).
+
+Title matching uses `"folderName - Cursor"` (and the workspace variant
+`"folderName (Workspace) - Cursor"`), the same hyphen separator as VS Code on
+Linux. The recommended title setting is the same:
+
+```json
+"window.title": "${rootNameShort}${separator}${appName}"
+```
 
 ### Diagnostics
 

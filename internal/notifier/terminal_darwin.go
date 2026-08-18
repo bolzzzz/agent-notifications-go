@@ -11,6 +11,7 @@ import (
 
 	"github.com/777genius/agent-notifications-go/internal/config"
 	"github.com/777genius/agent-notifications-go/internal/platform"
+	"github.com/777genius/agent-notifications-go/internal/product"
 )
 
 // terminalBundleIDMap maps TERM_PROGRAM values to macOS bundle identifiers
@@ -44,8 +45,12 @@ func GetTerminalBundleID(configOverride string) string {
 		return bundleID
 	}
 
-	// 3. Map TERM_PROGRAM to bundle ID
+	// 3. Map TERM_PROGRAM to bundle ID. Cursor IDE is a VS Code fork and often
+	// sets TERM_PROGRAM=vscode; prefer Cursor's bundle ID when CURSOR_* is set.
 	if termProgram := os.Getenv("TERM_PROGRAM"); termProgram != "" {
+		if product.IsCursorEnv() && strings.EqualFold(termProgram, "vscode") {
+			return "com.todesktop.230313mzl4w4u92"
+		}
 		if bundleID, ok := terminalBundleIDMap[termProgram]; ok {
 			return bundleID
 		}

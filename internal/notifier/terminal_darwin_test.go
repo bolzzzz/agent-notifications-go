@@ -145,6 +145,18 @@ func TestGetTerminalNotifierPath_AgentNotifier(t *testing.T) {
 	t.Logf("AgentNotifier found at: %s", path)
 }
 
+func TestGetTerminalBundleID_CursorIDERemapsVSCodeTermProgram(t *testing.T) {
+	t.Setenv("__CFBundleIdentifier", "")
+	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("CURSOR_PROJECT_DIR", "/repo")
+
+	got := GetTerminalBundleID("")
+	want := "com.todesktop.230313mzl4w4u92"
+	if got != want {
+		t.Errorf("GetTerminalBundleID() Cursor+vscode = %q, want %q", got, want)
+	}
+}
+
 func TestGetTerminalBundleID_AllMappings(t *testing.T) {
 	// Test all known terminal mappings
 	testCases := []struct {
@@ -172,6 +184,10 @@ func TestGetTerminalBundleID_AllMappings(t *testing.T) {
 
 	// Clear __CFBundleIdentifier to test TERM_PROGRAM mapping
 	os.Unsetenv("__CFBundleIdentifier")
+	// CURSOR_* would remap vscode → Cursor; keep this table testing the VS Code mapping.
+	t.Setenv("CURSOR_PROJECT_DIR", "")
+	t.Setenv("CURSOR_VERSION", "")
+	t.Setenv("CURSOR_TRANSCRIPT_PATH", "")
 
 	for _, tc := range testCases {
 		t.Run(tc.termProgram, func(t *testing.T) {

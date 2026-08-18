@@ -14,6 +14,10 @@ func saveTerminalEnv(t *testing.T) func() {
 		"TERM_PROGRAM",
 		"VSCODE_INJECTION",
 		"VSCODE_GIT_IPC_HANDLE",
+		"VSCODE_PID",
+		"CURSOR_PROJECT_DIR",
+		"CURSOR_VERSION",
+		"CURSOR_TRANSCRIPT_PATH",
 		"GNOME_TERMINAL_SCREEN",
 		"GNOME_TERMINAL_SERVICE",
 		"TERMINATOR_UUID",
@@ -194,6 +198,14 @@ func TestGetAppID_VSCodeVariants(t *testing.T) {
 		result := GetAppID(v)
 		if result != "code.desktop" {
 			t.Errorf("GetAppID(%q) = %q, want %q", v, result, "code.desktop")
+		}
+	}
+}
+
+func TestGetAppID_Cursor(t *testing.T) {
+	for _, v := range []string{"cursor", "Cursor", "cursor ide"} {
+		if got := GetAppID(v); got != "cursor.desktop" {
+			t.Errorf("GetAppID(%q) = %q, want %q", v, got, "cursor.desktop")
 		}
 	}
 }
@@ -460,6 +472,22 @@ func TestGetSearchTermWithFolder_NonVSCode(t *testing.T) {
 	}
 }
 
+func TestGetSearchTermWithFolder_Cursor(t *testing.T) {
+	got := GetSearchTermWithFolder("Cursor", "myproject")
+	want := "myproject - Cursor"
+	if got != want {
+		t.Errorf("GetSearchTermWithFolder(Cursor, myproject) = %q, want %q", got, want)
+	}
+}
+
+func TestGetSearchTermWorkspace_Cursor(t *testing.T) {
+	got := GetSearchTermWorkspace("cursor", "myproject")
+	want := "myproject (Workspace) - Cursor"
+	if got != want {
+		t.Errorf("GetSearchTermWorkspace(cursor, myproject) = %q, want %q", got, want)
+	}
+}
+
 // --- GetSearchTerm tests ---
 
 func TestGetSearchTerm_VSCode(t *testing.T) {
@@ -484,6 +512,36 @@ func TestGetSearchTerm_UnknownFallback(t *testing.T) {
 	result := GetSearchTerm("kitty")
 	if result != "kitty" {
 		t.Errorf("GetSearchTerm(kitty) = %q, want %q", result, "kitty")
+	}
+}
+
+func TestGetSearchTerm_Cursor(t *testing.T) {
+	if got := GetSearchTerm("Cursor"); got != "Cursor" {
+		t.Errorf("GetSearchTerm(Cursor) = %q, want %q", got, "Cursor")
+	}
+}
+
+func TestCursorFocusMappings(t *testing.T) {
+	if got := GetGnomeWmClass("Cursor"); got != "cursor" {
+		t.Errorf("GetGnomeWmClass(Cursor) = %q, want %q", got, "cursor")
+	}
+	if got := GetWlrctlAppID("Cursor"); got != "cursor" {
+		t.Errorf("GetWlrctlAppID(Cursor) = %q, want %q", got, "cursor")
+	}
+	if got := GetKdotoolClass("Cursor"); got != "cursor" {
+		t.Errorf("GetKdotoolClass(Cursor) = %q, want %q", got, "cursor")
+	}
+	if got := GetXdotoolClass("Cursor"); got != "Cursor" {
+		t.Errorf("GetXdotoolClass(Cursor) = %q, want %q", got, "Cursor")
+	}
+}
+
+func TestIsCursorTerminalName(t *testing.T) {
+	if !IsCursorTerminalName("Cursor") || !IsCursorTerminalName("cursor ide") {
+		t.Fatal("expected Cursor names to match")
+	}
+	if IsCursorTerminalName("code") || IsCursorTerminalName("kitty") {
+		t.Fatal("expected non-Cursor names to be rejected")
 	}
 }
 
@@ -546,6 +604,64 @@ func TestGetTerminalName_Fallback(t *testing.T) {
 	result := GetTerminalName()
 	if result != "Terminal" {
 		t.Errorf("GetTerminalName() fallback = %q, want %q", result, "Terminal")
+	}
+}
+
+func TestGetTerminalName_CursorIDE_NoTermProgram(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	os.Setenv("CURSOR_PROJECT_DIR", "/repo")
+
+	if got := GetTerminalName(); got != "Cursor" {
+		t.Errorf("GetTerminalName() with CURSOR_PROJECT_DIR = %q, want %q", got, "Cursor")
+	}
+}
+
+func TestGetTerminalName_CursorIDE_TermProgramVSCode(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	os.Setenv("CURSOR_VERSION", "1.0.0")
+	os.Setenv("TERM_PROGRAM", "vscode")
+
+	if got := GetTerminalName(); got != "Cursor" {
+		t.Errorf("GetTerminalName() Cursor+vscode = %q, want %q", got, "Cursor")
+	}
+}
+
+func TestGetTerminalName_CursorIDE_VSCodeInjection(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	os.Setenv("CURSOR_PROJECT_DIR", "/repo")
+	os.Setenv("VSCODE_INJECTION", "1")
+
+	if got := GetTerminalName(); got != "Cursor" {
+		t.Errorf("GetTerminalName() Cursor+VSCODE_INJECTION = %q, want %q", got, "Cursor")
+	}
+}
+
+func TestGetTerminalName_CursorCLI_KeepsRealTerminal(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	os.Setenv("CURSOR_PROJECT_DIR", "/repo")
+	os.Setenv("TERM_PROGRAM", "kitty")
+
+	if got := GetTerminalName(); got != "kitty" {
+		t.Errorf("GetTerminalName() Cursor CLI in kitty = %q, want %q", got, "kitty")
+	}
+}
+
+func TestGetTerminalName_VSCodeUnchangedWithoutCursorEnv(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	os.Setenv("VSCODE_INJECTION", "1")
+
+	if got := GetTerminalName(); got != "Code" {
+		t.Errorf("GetTerminalName() VS Code without CURSOR_* = %q, want %q", got, "Code")
 	}
 }
 
@@ -731,7 +847,7 @@ func TestNormalizeWezTermFocusHints_NonWezTermIgnoresExplicitHints(t *testing.T)
 // --- Cross-mapping consistency tests ---
 
 func TestMappingConsistency_AllFunctionsHandleVSCode(t *testing.T) {
-	variants := []string{"code", "vscode", "visual studio code"}
+	variants := []string{"code", "vscode", "visual studio code", "cursor"}
 
 	for _, v := range variants {
 		appID := GetAppID(v)

@@ -105,7 +105,7 @@ func sendViaDaemon(title, body, appName, cwd, initialCWD string) error {
 		if folderName == "" {
 			folderName = cwdFolderName
 		}
-		if daemon.IsVSCodeTerminalName(focusTarget) {
+		if daemon.IsVSCodeTerminalName(focusTarget) || daemon.IsCursorTerminalName(focusTarget) {
 			workspaceName = detectVSCodeWorkspaceName(cwd)
 		}
 	}

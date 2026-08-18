@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/777genius/agent-notifications-go/internal/product"
 )
 
 const agentNotificationsDesktopEntryID = "agent-notifications"
@@ -29,6 +31,8 @@ func GetAppID(terminalName string) string {
 	switch strings.ToLower(terminalName) {
 	case "code", "vscode", "visual studio code":
 		return "code.desktop"
+	case "cursor", "cursor ide":
+		return "cursor.desktop"
 	case "gnome-terminal":
 		return "org.gnome.Terminal.desktop"
 	case "konsole":
@@ -115,6 +119,8 @@ func GetGnomeWmClass(terminalName string) string {
 		return "org.wezfurlong.wezterm"
 	case "code", "vscode", "visual studio code":
 		return "code"
+	case "cursor", "cursor ide":
+		return "cursor"
 	case "alacritty":
 		return "Alacritty"
 	case "kitty":
@@ -143,6 +149,8 @@ func GetWlrctlAppID(terminalName string) string {
 		return "com.mitchellh.ghostty"
 	case "code", "vscode", "visual studio code":
 		return "code"
+	case "cursor", "cursor ide":
+		return "cursor"
 	case "alacritty":
 		return "Alacritty"
 	case "kitty":
@@ -163,6 +171,8 @@ func GetKdotoolClass(terminalName string) string {
 	switch strings.ToLower(terminalName) {
 	case "code", "vscode", "visual studio code":
 		return "code"
+	case "cursor", "cursor ide":
+		return "cursor"
 	case "alacritty":
 		return "Alacritty"
 	case "kitty":
@@ -183,6 +193,8 @@ func GetXdotoolClass(terminalName string) string {
 	switch strings.ToLower(terminalName) {
 	case "code", "vscode", "visual studio code":
 		return "Code"
+	case "cursor", "cursor ide":
+		return "Cursor"
 	case "alacritty":
 		return "Alacritty"
 	case "kitty":
@@ -211,6 +223,8 @@ func GetSearchTerm(terminalName string) string {
 	switch strings.ToLower(terminalName) {
 	case "code", "vscode", "visual studio code":
 		return "Visual Studio Code"
+	case "cursor", "cursor ide":
+		return "Cursor"
 	case "gnome-terminal":
 		return "Terminal"
 	default:
@@ -219,9 +233,8 @@ func GetSearchTerm(terminalName string) string {
 }
 
 // GetSearchTermWithFolder returns the window title search term, using the project
-// folder name for VS Code when available (more specific than "Visual Studio Code").
-// For VS Code the folder name is combined with the app title suffix (em dash +
-// "Visual Studio Code") so the search term matches VS Code windows precisely
+// folder name for VS Code / Cursor when available. The folder name is combined
+// with the app title suffix so the search matches the editor window precisely
 // without accidentally matching browser tabs that contain the folder name.
 func GetSearchTermWithFolder(terminalName, folderName string) string {
 	switch strings.ToLower(terminalName) {
@@ -231,6 +244,11 @@ func GetSearchTermWithFolder(terminalName, folderName string) string {
 			// not an em dash (" — ") which is macOS-only. The suffix avoids
 			// matching browser tabs that contain the folder name.
 			return folderName + " - Visual Studio Code"
+		}
+	case "cursor", "cursor ide":
+		if folderName != "" {
+			// Cursor is a VS Code fork and uses the same Linux title separator.
+			return folderName + " - Cursor"
 		}
 	}
 	return GetSearchTerm(terminalName)
@@ -246,14 +264,28 @@ func GetSearchTermWorkspace(terminalName, folderName string) string {
 		if folderName != "" {
 			return folderName + " (Workspace) - Visual Studio Code"
 		}
+	case "cursor", "cursor ide":
+		if folderName != "" {
+			return folderName + " (Workspace) - Cursor"
+		}
 	}
 	return ""
 }
 
 // GetTerminalName detects the current terminal from environment variables.
 func GetTerminalName() string {
+	termProg := strings.TrimSpace(os.Getenv("TERM_PROGRAM"))
+
+	// Cursor IDE (and its integrated terminal) injects CURSOR_* and often looks
+	// like VS Code (TERM_PROGRAM=vscode / VSCODE_*). Focus the Cursor window
+	// instead of searching for Visual Studio Code. Cursor CLI in a real
+	// terminal keeps that terminal's TERM_PROGRAM (kitty, ghostty, …).
+	if product.IsCursorEnv() && cursorIDELike(termProg) {
+		return "Cursor"
+	}
+
 	// Try TERM_PROGRAM first (set by many terminals)
-	if termProg := os.Getenv("TERM_PROGRAM"); termProg != "" {
+	if termProg != "" {
 		return termProg
 	}
 
@@ -279,6 +311,25 @@ func GetTerminalName() string {
 
 	// Fallback to generic terminal
 	return "Terminal"
+}
+
+func cursorIDELike(termProg string) bool {
+	if termProg == "" || isVSCodeTermProgram(termProg) {
+		return true
+	}
+	// Editor-hosted hook even if TERM_PROGRAM was inherited from a launcher terminal.
+	return os.Getenv("VSCODE_PID") != "" ||
+		os.Getenv("VSCODE_INJECTION") != "" ||
+		os.Getenv("VSCODE_GIT_IPC_HANDLE") != ""
+}
+
+func isVSCodeTermProgram(termProg string) bool {
+	switch strings.ToLower(termProg) {
+	case "vscode", "code", "visual studio code":
+		return true
+	default:
+		return false
+	}
 }
 
 // GetX11WindowID returns the current terminal window's X11 window ID when available.
@@ -330,6 +381,16 @@ func GetWezTermSocketPath() string {
 func IsVSCodeTerminalName(terminalName string) bool {
 	switch strings.ToLower(strings.TrimSpace(terminalName)) {
 	case "code", "vscode", "visual studio code":
+		return true
+	default:
+		return false
+	}
+}
+
+// IsCursorTerminalName reports whether terminalName identifies the Cursor IDE.
+func IsCursorTerminalName(terminalName string) bool {
+	switch strings.ToLower(strings.TrimSpace(terminalName)) {
+	case "cursor", "cursor ide":
 		return true
 	default:
 		return false

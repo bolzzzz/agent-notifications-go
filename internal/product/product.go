@@ -15,12 +15,12 @@
 // CLAUDE_* names as compatibility aliases, so CLAUDE_* must never be used as a
 // Claude Code signal.
 //
-// The Cursor CLI (`agent`/`cursor-agent`) runs hooks from ~/.cursor/hooks.json
-// and injects CURSOR_* environment variables into each hook subprocess. Its
-// stop payload also carries a model field that would otherwise match the Codex
-// heuristic, so CURSOR_* env (and the explicit "product": "cursor" /
-// --product cursor pin used by the install command) must win over Codex
-// detection.
+// The Cursor CLI (`agent`/`cursor-agent`) and Cursor IDE agent both run hooks
+// from ~/.cursor/hooks.json and inject CURSOR_* environment variables into
+// each hook subprocess. The stop payload also carries a model field that would
+// otherwise match the Codex heuristic, so CURSOR_* env (and the explicit
+// "product": "cursor" / --product cursor pin used by the install command) must
+// win over Codex detection.
 package product
 
 import "os"
@@ -48,8 +48,8 @@ var codeBuddyEnvVars = []string{
 	"CODEBUDDY_SESSION_ID",
 }
 
-// cursorEnvVars are environment variables the Cursor CLI injects into hook
-// subprocesses (documented in Cursor's hooks reference). CURSOR_PROJECT_DIR and
+// cursorEnvVars are environment variables Cursor injects into hook subprocesses
+// (documented in Cursor's hooks reference). CURSOR_PROJECT_DIR and
 // CURSOR_VERSION are always present for Agent hooks; CURSOR_TRANSCRIPT_PATH is
 // added when transcripts are enabled.
 var cursorEnvVars = []string{
@@ -91,6 +91,13 @@ func Detect(turnID, model string) string {
 		return Codex
 	}
 	return Claude
+}
+
+// IsCursorEnv reports whether any Cursor-specific environment variable is set
+// to a non-empty value. The Cursor IDE and Cursor CLI both inject these into
+// hook subprocesses.
+func IsCursorEnv() bool {
+	return isCursorEnv()
 }
 
 // isCursorEnv reports whether any Cursor-specific environment variable is set

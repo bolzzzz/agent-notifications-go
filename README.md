@@ -35,8 +35,10 @@
   the transcript (`CURSOR_TRANSCRIPT_PATH` / `transcript_path`) for a richer
   summary when transcripts are enabled, or the status alone otherwise. Remove
   the hooks with `agent-notifications uninstall-cursor-hooks`. Configuration is
-  read from `~/.cursor/agent-notifications-go/config.json`. This targets the
-  Cursor **CLI** only (not the Cursor IDE agent).
+  read from `~/.cursor/agent-notifications-go/config.json`. The same hooks also
+  fire for the Cursor **IDE** agent (shared `~/.cursor/hooks.json`); click-to-focus
+  raises the Cursor window on Linux and macOS. Cursor CLI in a real terminal
+  still focuses that terminal.
 - **Cursor approval-wait notifications** — Cursor has no hook for "the agent is
   now waiting for you to approve this command", and its
   `beforeShellExecution` / `beforeMCPExecution` gates fire *before* Cursor
