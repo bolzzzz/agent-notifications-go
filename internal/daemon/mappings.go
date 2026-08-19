@@ -280,7 +280,13 @@ func GetTerminalName() string {
 	// like VS Code (TERM_PROGRAM=vscode / VSCODE_*). Focus the Cursor window
 	// instead of searching for Visual Studio Code. Cursor CLI in a real
 	// terminal keeps that terminal's TERM_PROGRAM (kitty, ghostty, …).
-	if product.IsCursorEnv() && cursorIDELike(termProg) {
+	//
+	// CURSOR_* is only injected into Cursor's own agent-hook subprocesses, not
+	// into arbitrary shells running inside Cursor's integrated terminal — so a
+	// plain Claude Code session opened there has no CURSOR_* to check. Fall back
+	// to isCursorDesktopHost, which reads GTK/Chromium launch-tracking env vars
+	// that every child process of the Cursor app inherits.
+	if (product.IsCursorEnv() || isCursorDesktopHost()) && cursorIDELike(termProg) {
 		return "Cursor"
 	}
 
@@ -311,6 +317,20 @@ func GetTerminalName() string {
 
 	// Fallback to generic terminal
 	return "Terminal"
+}
+
+// isCursorDesktopHost reports whether the current process was launched (directly
+// or via an ancestor) from the Cursor desktop app, using GTK/Chromium
+// launch-tracking env vars (GIO_LAUNCHED_DESKTOP_FILE, CHROME_DESKTOP) that name
+// the .desktop file of the launching app and are inherited by every child
+// process — including a plain shell opened in Cursor's integrated terminal.
+func isCursorDesktopHost() bool {
+	for _, name := range []string{"GIO_LAUNCHED_DESKTOP_FILE", "CHROME_DESKTOP"} {
+		if strings.Contains(strings.ToLower(os.Getenv(name)), "cursor") {
+			return true
+		}
+	}
+	return false
 }
 
 func cursorIDELike(termProg string) bool {

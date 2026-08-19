@@ -18,6 +18,8 @@ func saveTerminalEnv(t *testing.T) func() {
 		"CURSOR_PROJECT_DIR",
 		"CURSOR_VERSION",
 		"CURSOR_TRANSCRIPT_PATH",
+		"GIO_LAUNCHED_DESKTOP_FILE",
+		"CHROME_DESKTOP",
 		"GNOME_TERMINAL_SCREEN",
 		"GNOME_TERMINAL_SERVICE",
 		"TERMINATOR_UUID",
@@ -651,6 +653,37 @@ func TestGetTerminalName_CursorCLI_KeepsRealTerminal(t *testing.T) {
 
 	if got := GetTerminalName(); got != "kitty" {
 		t.Errorf("GetTerminalName() Cursor CLI in kitty = %q, want %q", got, "kitty")
+	}
+}
+
+func TestGetTerminalName_CursorIntegratedTerminal_NoCursorEnv(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	// Plain Claude Code session opened in Cursor's integrated terminal: no
+	// CURSOR_* (those are only injected into cursor-agent's own hook
+	// subprocesses), but the GTK/Chromium launch-tracking vars still name
+	// Cursor's .desktop file.
+	os.Setenv("TERM_PROGRAM", "vscode")
+	os.Setenv("CHROME_DESKTOP", "cursor.desktop")
+	os.Setenv("GIO_LAUNCHED_DESKTOP_FILE", "/usr/share/applications/cursor.desktop")
+
+	if got := GetTerminalName(); got != "Cursor" {
+		t.Errorf("GetTerminalName() Cursor integrated terminal without CURSOR_* = %q, want %q", got, "Cursor")
+	}
+}
+
+func TestGetTerminalName_VSCodeIntegratedTerminal_ChromeDesktopCode(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	// Real VS Code sets the same launch-tracking vars, but naming code.desktop
+	// rather than cursor.desktop; must not be misdetected as Cursor.
+	os.Setenv("TERM_PROGRAM", "vscode")
+	os.Setenv("CHROME_DESKTOP", "code.desktop")
+
+	if got := GetTerminalName(); got != "vscode" {
+		t.Errorf("GetTerminalName() VS Code with CHROME_DESKTOP=code.desktop = %q, want %q", got, "vscode")
 	}
 }
 
