@@ -370,13 +370,15 @@ func activateWindowTitleWithXdotool(windowTitle string) error {
 // This method does NOT require unsafe_mode and works on GNOME 42+.
 //
 // Search order:
-//  1. activateBySubstring with the folder-specific term, when available — this
+//  1. activateBySubstring with folder-specific terms, when available — this
 //     distinguishes multiple windows of the same app (e.g. two VS Code windows for
-//     different projects). GetSearchTermWithFolder includes the app title suffix for
-//     VS Code ("folder — Visual Studio Code") so it won't match browser windows whose
-//     tab title happens to contain the folder name.
-//  2. activateByWmClass — app-specific fallback for when no folder name is available
-//     or the folder-specific search found no match.
+//     different projects). Precise terms include the app title suffix
+//     ("folder - Visual Studio Code") so they won't match browser tabs that happen
+//     to contain the folder name. A "folder - " fallback covers custom titles
+//     that insert profileName between the folder and the app name.
+//  2. activateByWmClass — app-specific fallback only when no folder name is
+//     available. Never used as a fallback after a folder search miss: that would
+//     raise an arbitrary window of the same app.
 //  3. activateBySubstring with the generic terminal name as a final fallback.
 func TryActivateWindowByTitle(terminalName, folderName string) error {
 	gnomeActivate := func(method, arg string) bool {
@@ -390,36 +392,24 @@ func TryActivateWindowByTitle(terminalName, folderName string) error {
 		return err == nil && strings.Contains(strings.TrimSpace(string(output)), "true")
 	}
 
-	// Step 1: folder-specific searches (e.g. "project - Visual Studio Code" and
-	// "project (Workspace) - Visual Studio Code").
-	// Try precise title matches first. When folderName is available we must NOT fall
-	// through to activateByWmClass on failure — WmClass raises an arbitrary window of
-	// the same app, which focuses the wrong instance when multiple windows are open.
-	// The workspace variant handles VS Code opened via a .code-workspace file, where
-	// the window title is "{name} (Workspace) - Visual Studio Code" instead of the
-	// plain folder format.
-	folderTerm := GetSearchTermWithFolder(terminalName, folderName)
-	hasFolderSearch := folderTerm != GetSearchTerm(terminalName)
-	if hasFolderSearch {
-		if gnomeActivate("activateBySubstring", folderTerm) {
-			return nil
-		}
-		// Also try the VS Code workspace-mode title format.
-		if workspaceTerm := GetSearchTermWorkspace(terminalName, folderName); workspaceTerm != "" {
-			if gnomeActivate("activateBySubstring", workspaceTerm) {
+	if terms := folderTitleSearchTerms(terminalName, folderName); len(terms) > 0 {
+		for _, term := range terms {
+			if gnomeActivate("activateBySubstring", term) {
 				return nil
 			}
 		}
-		// Both folder-specific searches failed. Return an error so subsequent focus
+		// Folder-specific searches failed. Return an error so subsequent focus
 		// methods (TryGnomeShellEvalByTitle, etc.) can attempt their own strategies.
 		// Do NOT fall through to activateByWmClass here — that would focus the wrong
 		// window when multiple instances of the same app are open.
-		return fmt.Errorf("activate-window-by-title: no window matching %q or workspace variant", folderTerm)
+		return fmt.Errorf("activate-window-by-title: no window matching %q or variants", terms[0])
 	}
 
 	// No folder-specific title available: fall back to WM class and generic searches.
 	// These are safe when there is only one window of this app, or when any window will do.
-	if wmClass := GetGnomeWmClass(terminalName); wmClass != "" {
+	// Electron apps (Cursor/VS Code) report WM_CLASS as either "cursor"/"code" or
+	// "Cursor"/"Code"; the extension uses strict equality, so try both.
+	for _, wmClass := range gnomeWmClassCandidates(terminalName) {
 		if gnomeActivate("activateByWmClass", wmClass) {
 			return nil
 		}
@@ -515,20 +505,36 @@ func TryGnomeShellEvalByTitle(terminalName, folderName string) error {
 	return nil
 }
 
-// TryGnomeShellEval uses GNOME Shell's Eval method to activate an app.
-// Requires unsafe_mode or development-tools enabled.
+// TryGnomeShellEval uses GNOME Shell's Eval method to raise an existing app
+// window. Requires unsafe_mode or development-tools enabled.
+//
+// When a folder name is set this is skipped: app-level activation cannot pick
+// the right window among several projects, and GNOME's App.activate() falls
+// through to open_new_window() when it does not associate existing Electron
+// windows with the .desktop file. Cursor's desktop file ships a
+// new-empty-window action (`cursor --new-window`), so that path spawns a
+// duplicate window of the same project instead of restoring the existing one.
 func TryGnomeShellEval(terminalName, folderName string) error {
+	if strings.TrimSpace(folderName) != "" && (IsVSCodeTerminalName(terminalName) || IsCursorTerminalName(terminalName)) {
+		return fmt.Errorf("skipping app-level activate for %s with folder %q (would not restore a specific window)", terminalName, folderName)
+	}
+
 	appID := escapeJS(GetAppID(terminalName))
 
-	// JavaScript to find and activate the app's windows
+	// Only raise an already-open window. Never call app.activate() — that
+	// launches a new instance when GNOME sees the app as STOPPED.
 	js := fmt.Sprintf(`
 		(function() {
 			let app = Shell.AppSystem.get_default().lookup_app('%s');
-			if (app) {
-				app.activate();
-				return 'activated';
+			if (!app) {
+				return 'app not found';
 			}
-			return 'app not found';
+			let windows = app.get_windows();
+			if (!windows || windows.length === 0) {
+				return 'no windows';
+			}
+			windows[0].activate(global.get_current_time());
+			return 'activated';
 		})()
 	`, appID)
 
@@ -548,6 +554,9 @@ func TryGnomeShellEval(terminalName, folderName string) error {
 	if strings.Contains(outputStr, "app not found") {
 		return fmt.Errorf("app not found via Shell.Eval")
 	}
+	if strings.Contains(outputStr, "no windows") {
+		return fmt.Errorf("Shell.Eval found no existing windows for %q", appID)
+	}
 	if strings.Contains(outputStr, "false") && !strings.Contains(outputStr, "activated") {
 		return fmt.Errorf("Shell.Eval blocked (GNOME 41+ security) - install unsafe-mode-menu extension or activate-window-by-title extension")
 	}
@@ -556,7 +565,14 @@ func TryGnomeShellEval(terminalName, folderName string) error {
 }
 
 // TryGnomeFocusApp uses GNOME Shell's FocusApp method (available since GNOME 45).
+// On modern GNOME this only highlights the app in the overview — it does not
+// raise a window, and on GNOME 50 it is restricted to privileged senders.
+// Skip it for multi-window editors when we know which folder to target.
 func TryGnomeFocusApp(terminalName, folderName string) error {
+	if strings.TrimSpace(folderName) != "" && (IsVSCodeTerminalName(terminalName) || IsCursorTerminalName(terminalName)) {
+		return fmt.Errorf("skipping FocusApp for %s with folder %q (overview select, not window restore)", terminalName, folderName)
+	}
+
 	appID := GetAppID(terminalName)
 
 	cmd := exec.Command("gdbus", "call",

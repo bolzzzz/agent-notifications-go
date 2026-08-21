@@ -142,6 +142,38 @@ func GetGnomeWmClass(terminalName string) string {
 	}
 }
 
+// gnomeWmClassCandidates returns WM_CLASS values to try with the
+// activate-window-by-title extension, which compares with strict equality.
+// Electron apps may report either the lowercase app_id or the StartupWMClass
+// from the desktop file ("Cursor", "Code").
+func gnomeWmClassCandidates(terminalName string) []string {
+	primary := GetGnomeWmClass(terminalName)
+	if primary == "" {
+		return nil
+	}
+	switch strings.ToLower(terminalName) {
+	case "cursor", "cursor ide":
+		return uniqueKeepOrder(primary, "Cursor")
+	case "code", "vscode", "visual studio code":
+		return uniqueKeepOrder(primary, "Code")
+	default:
+		return []string{primary}
+	}
+}
+
+func uniqueKeepOrder(values ...string) []string {
+	seen := make(map[string]bool, len(values))
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if v == "" || seen[v] {
+			continue
+		}
+		seen[v] = true
+		out = append(out, v)
+	}
+	return out
+}
+
 // GetWlrctlAppID returns the wlroots app_id for a terminal name.
 func GetWlrctlAppID(terminalName string) string {
 	switch strings.ToLower(terminalName) {
@@ -252,6 +284,45 @@ func GetSearchTermWithFolder(terminalName, folderName string) string {
 		}
 	}
 	return GetSearchTerm(terminalName)
+}
+
+// folderTitleSearchTerms returns substring candidates for raising a specific
+// VS Code / Cursor window. Precise "folder - App" forms are first; a trailing
+// "folder - " fallback covers custom window.title values that insert extra
+// segments (profileName, dirty indicator) between the folder and the app name.
+//
+// When a folder name is available this must stay folder-specific: a bare app
+// / WM-class match would raise an arbitrary window of the same editor.
+func folderTitleSearchTerms(terminalName, folderName string) []string {
+	folderName = strings.TrimSpace(folderName)
+	if folderName == "" {
+		return nil
+	}
+
+	precise := GetSearchTermWithFolder(terminalName, folderName)
+	if precise == GetSearchTerm(terminalName) {
+		return nil
+	}
+
+	terms := []string{precise}
+	if workspaceTerm := GetSearchTermWorkspace(terminalName, folderName); workspaceTerm != "" {
+		terms = append(terms, workspaceTerm)
+	}
+	if IsVSCodeTerminalName(terminalName) || IsCursorTerminalName(terminalName) {
+		// "myproject - Default - Cursor" does not contain "myproject - Cursor".
+		terms = append(terms, folderName+" - ")
+	}
+
+	seen := make(map[string]bool, len(terms))
+	out := make([]string, 0, len(terms))
+	for _, term := range terms {
+		if term == "" || seen[term] {
+			continue
+		}
+		seen[term] = true
+		out = append(out, term)
+	}
+	return out
 }
 
 // GetSearchTermWorkspace returns the VS Code workspace-mode window title search term.

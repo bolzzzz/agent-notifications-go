@@ -109,7 +109,15 @@ that terminal (`TERM_PROGRAM=kitty`, Ghostty, …).
 
 Title matching uses `"folderName - Cursor"` (and the workspace variant
 `"folderName (Workspace) - Cursor"`), the same hyphen separator as VS Code on
-Linux. The recommended title setting is the same:
+Linux. If those miss — for example a custom `window.title` that inserts
+`${profileName}` (`"folder - Default - Cursor"`) — click-to-focus falls back
+to the `"folder - "` prefix rather than launching Cursor. Launching
+`cursor.desktop` is avoided on purpose: that desktop file has a
+`new-empty-window` action (`cursor --new-window`), so GNOME `app.activate()`
+would open another window of the same project instead of restoring the
+existing one.
+
+The recommended title setting is:
 
 ```json
 "window.title": "${rootNameShort}${separator}${appName}"

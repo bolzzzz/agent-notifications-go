@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -51,6 +52,26 @@ func TestGetFocusMethods_AllHaveFunctions(t *testing.T) {
 		if m.Fn == nil {
 			t.Errorf("FocusMethod %q has nil Fn", m.Name)
 		}
+	}
+}
+
+func TestTryGnomeShellEval_SkipsCursorWithFolder(t *testing.T) {
+	err := TryGnomeShellEval("Cursor", "model-for-maths")
+	if err == nil {
+		t.Fatal("expected skip error for Cursor with folder")
+	}
+	if !strings.Contains(err.Error(), "skipping app-level activate") {
+		t.Errorf("error = %q, want skipping app-level activate", err)
+	}
+}
+
+func TestTryGnomeFocusApp_SkipsCursorWithFolder(t *testing.T) {
+	err := TryGnomeFocusApp("Cursor", "model-for-maths")
+	if err == nil {
+		t.Fatal("expected skip error for Cursor with folder")
+	}
+	if !strings.Contains(err.Error(), "skipping FocusApp") {
+		t.Errorf("error = %q, want skipping FocusApp", err)
 	}
 }
 

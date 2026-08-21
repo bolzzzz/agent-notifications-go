@@ -490,6 +490,48 @@ func TestGetSearchTermWorkspace_Cursor(t *testing.T) {
 	}
 }
 
+func TestFolderTitleSearchTerms_CursorIncludesProfileFallback(t *testing.T) {
+	got := folderTitleSearchTerms("Cursor", "model-for-maths")
+	want := []string{
+		"model-for-maths - Cursor",
+		"model-for-maths (Workspace) - Cursor",
+		"model-for-maths - ",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("folderTitleSearchTerms() = %#v, want %#v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("folderTitleSearchTerms()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	// Custom window.title with profileName is not a substring of "folder - Cursor".
+	profileTitle := "model-for-maths - Default - Cursor"
+	if strings.Contains(profileTitle, want[0]) {
+		t.Fatal("test assumption failed: profile title unexpectedly contains precise term")
+	}
+	if !strings.Contains(profileTitle, want[2]) {
+		t.Errorf("profile title %q should match fallback %q", profileTitle, want[2])
+	}
+}
+
+func TestFolderTitleSearchTerms_NonEditor(t *testing.T) {
+	if got := folderTitleSearchTerms("kitty", "myproject"); got != nil {
+		t.Errorf("folderTitleSearchTerms(kitty) = %#v, want nil", got)
+	}
+	if got := folderTitleSearchTerms("Cursor", ""); got != nil {
+		t.Errorf("folderTitleSearchTerms(empty folder) = %#v, want nil", got)
+	}
+}
+
+func TestGnomeWmClassCandidates_Cursor(t *testing.T) {
+	got := gnomeWmClassCandidates("Cursor")
+	if len(got) != 2 || got[0] != "cursor" || got[1] != "Cursor" {
+		t.Errorf("gnomeWmClassCandidates(Cursor) = %#v, want [cursor Cursor]", got)
+	}
+}
+
 // --- GetSearchTerm tests ---
 
 func TestGetSearchTerm_VSCode(t *testing.T) {
