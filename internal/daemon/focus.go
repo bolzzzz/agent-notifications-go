@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/godbus/dbus/v5"
 )
 
 // FocusMethod represents a method for focusing a window
@@ -29,7 +31,7 @@ func GetFocusMethods() []FocusMethod {
 		{"GNOME Shell Eval (by app)", TryGnomeShellEval},
 		{"GNOME Shell FocusApp", TryGnomeFocusApp},
 		{"wlrctl", TryWlrctl},
-		{"kdotool", TryKdotool},
+		{"KWin script", TryKwinScript},
 		{"xdotool", TryXdotool},
 	}
 }
@@ -627,29 +629,114 @@ func TryWlrctl(terminalName, folderName string) error {
 	return nil
 }
 
-// TryKdotool uses kdotool for KDE Plasma.
-func TryKdotool(terminalName, folderName string) error {
-	if _, err := exec.LookPath("kdotool"); err != nil {
-		return fmt.Errorf("kdotool not installed")
-	}
+// kwinScriptCallback receives the "Result"/"Error" callDBus messages emitted by a KWin
+// script loaded via TryKwinScript. It is exported on a dedicated session bus connection
+// at path "/" with an empty interface name, matching how the generated script's callDBus
+// calls address it (no interface header, resolved by member name only).
+type kwinScriptCallback struct {
+	result chan string
+	errMsg chan string
+}
 
-	// Search by class
-	className := GetKdotoolClass(terminalName)
-	searchCmd := exec.Command("kdotool", "search", "--class", className)
-	output, err := searchCmd.CombinedOutput()
-	outputStr := strings.TrimSpace(string(output))
-
-	if err != nil || outputStr == "" {
-		return fmt.Errorf("no windows found via kdotool")
-	}
-
-	windowIDs := strings.Split(outputStr, "\n")
-
-	cmd := exec.Command("kdotool", "windowactivate", windowIDs[0])
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("kdotool windowactivate failed: %w", err)
+func (c *kwinScriptCallback) Result(message string) *dbus.Error {
+	select {
+	case c.result <- message:
+	default:
 	}
 	return nil
+}
+
+func (c *kwinScriptCallback) Error(message string) *dbus.Error {
+	select {
+	case c.errMsg <- message:
+	default:
+	}
+	return nil
+}
+
+// TryKwinScript activates a window by WM class using KWin's own D-Bus scripting service
+// (org.kde.KWin /Scripting), the same official mechanism the external kdotool binary
+// wraps. This avoids depending on that binary being installed.
+//
+// KWin's Wayland scripting API (workspace.windowList(), the workspace.activeWindow
+// setter) is Plasma 6 only, so this is skipped outright on Plasma 5 rather than
+// attempting a script that would fail against a different API shape.
+func TryKwinScript(terminalName, folderName string) error {
+	if os.Getenv("KDE_SESSION_VERSION") != "6" {
+		return fmt.Errorf("KWin scripting focus requires Plasma 6 (KDE_SESSION_VERSION=%q)", os.Getenv("KDE_SESSION_VERSION"))
+	}
+
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		return fmt.Errorf("kwin script: failed to connect to session bus: %w", err)
+	}
+	defer conn.Close()
+
+	cb := &kwinScriptCallback{result: make(chan string, 1), errMsg: make(chan string, 1)}
+	if err := conn.Export(cb, "/", ""); err != nil {
+		return fmt.Errorf("kwin script: failed to export callback: %w", err)
+	}
+	defer conn.Export(nil, "/", "")
+
+	busName := conn.Names()[0]
+	wmClass := escapeJS(strings.ToLower(GetKdotoolClass(terminalName)))
+	script := fmt.Sprintf(`
+		(function() {
+			var windows = workspace.windowList();
+			var wmClass = '%s';
+			for (var i = 0; i < windows.length; i++) {
+				var w = windows[i];
+				var cls = (w.resourceClass || '').toLowerCase();
+				if (cls.indexOf(wmClass) === -1) {
+					continue;
+				}
+				workspace.activeWindow = w;
+				callDBus('%s', '/', '', 'Result', 'activated');
+				return;
+			}
+			callDBus('%s', '/', '', 'Result', 'no matching window');
+		})();
+	`, wmClass, busName, busName)
+
+	scriptFile, err := os.CreateTemp("", "agent-notifications-kwin-*.js")
+	if err != nil {
+		return fmt.Errorf("kwin script: failed to create temp script: %w", err)
+	}
+	defer os.Remove(scriptFile.Name())
+	if _, err := scriptFile.WriteString(script); err != nil {
+		scriptFile.Close()
+		return fmt.Errorf("kwin script: failed to write temp script: %w", err)
+	}
+	scriptFile.Close()
+
+	scriptName := fmt.Sprintf("agent-notifications-%d", time.Now().UnixNano())
+	scriptingObj := conn.Object("org.kde.KWin", "/Scripting")
+
+	var scriptID int32
+	if err := scriptingObj.Call("org.kde.kwin.Scripting.loadScript", 0, scriptFile.Name(), scriptName).Store(&scriptID); err != nil {
+		return fmt.Errorf("kwin script: loadScript failed: %w", err)
+	}
+	if scriptID < 0 {
+		return fmt.Errorf("kwin script: loadScript returned invalid id %d", scriptID)
+	}
+	defer scriptingObj.Call("org.kde.kwin.Scripting.unloadScript", 0, scriptName)
+
+	scriptObj := conn.Object("org.kde.KWin", dbus.ObjectPath(fmt.Sprintf("/Scripting/Script%d", scriptID)))
+	if call := scriptObj.Call("org.kde.kwin.Script.run", 0); call.Err != nil {
+		return fmt.Errorf("kwin script: run failed: %w", call.Err)
+	}
+
+	select {
+	case msg := <-cb.result:
+		if msg != "activated" {
+			return fmt.Errorf("kwin script: %s", msg)
+		}
+		return nil
+	case msg := <-cb.errMsg:
+		return fmt.Errorf("kwin script error: %s", msg)
+	case <-time.After(3 * time.Second):
+		return fmt.Errorf("kwin script: timed out waiting for result")
+	}
 }
 
 // TryXdotool uses xdotool for X11-based desktop environments
