@@ -680,23 +680,42 @@ func TryKwinScript(terminalName, folderName string) error {
 
 	busName := conn.Names()[0]
 	wmClass := escapeJS(strings.ToLower(GetKdotoolClass(terminalName)))
+	titleTerm := escapeJS(strings.ToLower(folderName))
+	// When a folder name is available, require it in the title on the first pass so
+	// multiple windows of the same app (e.g. several VS Code projects) don't collide —
+	// same reasoning as TryGnomeShellEvalByTitle. Only fall back to a class-only match
+	// (whichever matching window comes first) when no title match exists.
 	script := fmt.Sprintf(`
 		(function() {
 			var windows = workspace.windowList();
 			var wmClass = '%s';
-			for (var i = 0; i < windows.length; i++) {
-				var w = windows[i];
-				var cls = (w.resourceClass || '').toLowerCase();
-				if (cls.indexOf(wmClass) === -1) {
-					continue;
+			var titleTerm = '%s';
+			function findMatch(requireTitle) {
+				for (var i = 0; i < windows.length; i++) {
+					var w = windows[i];
+					var cls = (w.resourceClass || '').toLowerCase();
+					if (cls.indexOf(wmClass) === -1) {
+						continue;
+					}
+					if (requireTitle && (w.caption || '').toLowerCase().indexOf(titleTerm) === -1) {
+						continue;
+					}
+					return w;
 				}
+				return null;
+			}
+			var w = titleTerm !== '' ? findMatch(true) : null;
+			if (!w) {
+				w = findMatch(false);
+			}
+			if (w) {
 				workspace.activeWindow = w;
 				callDBus('%s', '/', '', 'Result', 'activated');
-				return;
+			} else {
+				callDBus('%s', '/', '', 'Result', 'no matching window');
 			}
-			callDBus('%s', '/', '', 'Result', 'no matching window');
 		})();
-	`, wmClass, busName, busName)
+	`, wmClass, titleTerm, busName, busName)
 
 	scriptFile, err := os.CreateTemp("", "agent-notifications-kwin-*.js")
 	if err != nil {
