@@ -46,19 +46,22 @@ type Response struct {
 
 // NotifyRequest contains notification details sent to the daemon
 type NotifyRequest struct {
-	Title              string `json:"title"`
-	Body               string `json:"body"`
-	AppName            string `json:"app_name,omitempty"`              // App name shown by the desktop environment (empty = daemon default)
-	FocusTarget        string `json:"focus_target"`                    // Terminal identifier (empty = auto-detect)
-	FocusFolder        string `json:"focus_folder,omitempty"`          // Session/project folder name for window-specific focus (initial cwd base)
-	FocusCWDFolder     string `json:"focus_cwd_folder,omitempty"`      // Current cwd folder name for fallback focus after Bash cd
-	FocusWorkspaceName string `json:"focus_workspace_name,omitempty"`  // VS Code workspace name (.code-workspace filename without extension)
-	FocusWindowID      string `json:"focus_window_id,omitempty"`       // Exact X11 window ID captured in the hook process
-	FocusWindowTitle   string `json:"focus_window_title,omitempty"`    // Exact window title captured in the hook process when available
-	FocusWezTermPaneID string `json:"focus_wezterm_pane_id,omitempty"` // WezTerm pane ID ($WEZTERM_PANE)
-	FocusWezTermSocket string `json:"focus_wezterm_socket,omitempty"`  // WezTerm unix socket ($WEZTERM_UNIX_SOCKET)
-	Urgency            int    `json:"urgency"`                         // D-Bus urgency: 0=low, 1=normal, 2=critical
-	Timeout            int    `json:"timeout"`                         // Notification timeout in seconds
+	Title               string `json:"title"`
+	Body                string `json:"body"`
+	AppName             string `json:"app_name,omitempty"`              // App name shown by the desktop environment (empty = daemon default)
+	FocusTarget         string `json:"focus_target"`                    // Terminal identifier (empty = auto-detect)
+	FocusFolder         string `json:"focus_folder,omitempty"`          // Session/project folder name for window-specific focus (initial cwd base)
+	FocusCWDFolder      string `json:"focus_cwd_folder,omitempty"`      // Current cwd folder name for fallback focus after Bash cd
+	FocusWorkspaceName  string `json:"focus_workspace_name,omitempty"`  // VS Code workspace name (.code-workspace filename without extension)
+	FocusWindowID       string `json:"focus_window_id,omitempty"`       // Exact X11 window ID captured in the hook process
+	FocusWindowTitle    string `json:"focus_window_title,omitempty"`    // Exact window title captured in the hook process when available
+	FocusWezTermPaneID  string `json:"focus_wezterm_pane_id,omitempty"` // WezTerm pane ID ($WEZTERM_PANE)
+	FocusWezTermSocket  string `json:"focus_wezterm_socket,omitempty"`  // WezTerm unix socket ($WEZTERM_UNIX_SOCKET)
+	FocusKonsoleService string `json:"focus_konsole_service,omitempty"` // Konsole D-Bus service ($KONSOLE_DBUS_SERVICE)
+	FocusKonsoleWindow  string `json:"focus_konsole_window,omitempty"`  // Konsole D-Bus window object path ($KONSOLE_DBUS_WINDOW)
+	FocusKonsoleSession string `json:"focus_konsole_session,omitempty"` // Konsole D-Bus session object path ($KONSOLE_DBUS_SESSION)
+	Urgency             int    `json:"urgency"`                         // D-Bus urgency: 0=low, 1=normal, 2=critical
+	Timeout             int    `json:"timeout"`                         // Notification timeout in seconds
 }
 
 // NotifyResponse contains the result of a notification request

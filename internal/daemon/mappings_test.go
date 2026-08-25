@@ -25,6 +25,8 @@ func saveTerminalEnv(t *testing.T) func() {
 		"TERMINATOR_UUID",
 		"KONSOLE_VERSION",
 		"KONSOLE_DBUS_SESSION",
+		"KONSOLE_DBUS_SERVICE",
+		"KONSOLE_DBUS_WINDOW",
 		"WINDOWID",
 		"XDG_SESSION_TYPE",
 		"XDG_CURRENT_DESKTOP",
@@ -916,6 +918,66 @@ func TestNormalizeWezTermFocusHints_NonWezTermIgnoresExplicitHints(t *testing.T)
 	paneID, socketPath := normalizeWezTermFocusHints("kitty", "42", "/tmp/wezterm.sock")
 	if paneID != "" || socketPath != "" {
 		t.Errorf("normalizeWezTermFocusHints(kitty) = (%q, %q), want empty hints", paneID, socketPath)
+	}
+}
+
+func TestIsKonsoleTerminalName(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{"konsole", true},
+		{"Konsole", true},
+		{" KONSOLE ", true},
+		{"gnome-terminal", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		if got := IsKonsoleTerminalName(tt.name); got != tt.want {
+			t.Errorf("IsKonsoleTerminalName(%q) = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestGetKonsoleFocusHints_KonsoleTarget(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	t.Setenv("KONSOLE_DBUS_SERVICE", " :1.511 ")
+	t.Setenv("KONSOLE_DBUS_WINDOW", " /Windows/1 ")
+	t.Setenv("KONSOLE_DBUS_SESSION", " /Sessions/2 ")
+
+	service, window, session := GetKonsoleFocusHints("konsole")
+	if service != ":1.511" {
+		t.Errorf("service = %q, want %q", service, ":1.511")
+	}
+	if window != "/Windows/1" {
+		t.Errorf("window = %q, want %q", window, "/Windows/1")
+	}
+	if session != "/Sessions/2" {
+		t.Errorf("session = %q, want %q", session, "/Sessions/2")
+	}
+}
+
+func TestGetKonsoleFocusHints_NonKonsoleIgnoresInheritedEnv(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	t.Setenv("KONSOLE_DBUS_SERVICE", ":1.511")
+	t.Setenv("KONSOLE_DBUS_WINDOW", "/Windows/1")
+	t.Setenv("KONSOLE_DBUS_SESSION", "/Sessions/2")
+
+	service, window, session := GetKonsoleFocusHints("code")
+	if service != "" || window != "" || session != "" {
+		t.Errorf("GetKonsoleFocusHints(code) = (%q, %q, %q), want empty hints", service, window, session)
+	}
+}
+
+func TestNormalizeKonsoleFocusHints_NonKonsoleIgnoresExplicitHints(t *testing.T) {
+	service, window, session := normalizeKonsoleFocusHints("kitty", ":1.511", "/Windows/1", "/Sessions/2")
+	if service != "" || window != "" || session != "" {
+		t.Errorf("normalizeKonsoleFocusHints(kitty) = (%q, %q, %q), want empty hints", service, window, session)
 	}
 }
 

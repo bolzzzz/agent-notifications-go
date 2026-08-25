@@ -118,7 +118,10 @@ func sendViaDaemon(title, body, appName, cwd, initialCWD string) error {
 	// Capture WezTerm pane info only when the focus target is actually WezTerm.
 	wezTermPaneID, wezTermSocket := daemon.GetWezTermFocusHints(focusTarget)
 
-	_, err = client.SendNotification(title, body, appName, focusTarget, folderName, cwdFolderName, workspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, 2, 30)
+	// Capture Konsole D-Bus tab info only when the focus target is actually Konsole.
+	konsoleService, konsoleWindow, konsoleSession := daemon.GetKonsoleFocusHints(focusTarget)
+
+	_, err = client.SendNotification(title, body, appName, focusTarget, folderName, cwdFolderName, workspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, konsoleService, konsoleWindow, konsoleSession, 2, 30)
 	return err
 }
 

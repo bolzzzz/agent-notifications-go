@@ -511,3 +511,41 @@ func normalizeWezTermFocusHints(terminalName, paneID, socketPath string) (string
 	}
 	return strings.TrimSpace(paneID), strings.TrimSpace(socketPath)
 }
+
+// IsKonsoleTerminalName reports whether terminalName identifies Konsole.
+func IsKonsoleTerminalName(terminalName string) bool {
+	return strings.EqualFold(strings.TrimSpace(terminalName), "konsole")
+}
+
+// GetKonsoleDBusService returns the D-Bus service name of the Konsole instance
+// hosting the current shell ($KONSOLE_DBUS_SERVICE).
+func GetKonsoleDBusService() string {
+	return strings.TrimSpace(os.Getenv("KONSOLE_DBUS_SERVICE"))
+}
+
+// GetKonsoleDBusWindow returns the D-Bus object path of the Konsole window
+// hosting the current shell ($KONSOLE_DBUS_WINDOW).
+func GetKonsoleDBusWindow() string {
+	return strings.TrimSpace(os.Getenv("KONSOLE_DBUS_WINDOW"))
+}
+
+// GetKonsoleDBusSession returns the D-Bus object path of the Konsole
+// tab/session hosting the current shell ($KONSOLE_DBUS_SESSION), e.g. "/Sessions/2".
+func GetKonsoleDBusSession() string {
+	return strings.TrimSpace(os.Getenv("KONSOLE_DBUS_SESSION"))
+}
+
+// GetKonsoleFocusHints returns Konsole D-Bus tab-focus hints only when the
+// detected focus target is Konsole. KONSOLE_DBUS_* variables are inherited by
+// every child process of a Konsole tab (including GUI apps launched from it),
+// so they must not be trusted for other focus targets.
+func GetKonsoleFocusHints(terminalName string) (service, window, session string) {
+	return normalizeKonsoleFocusHints(terminalName, GetKonsoleDBusService(), GetKonsoleDBusWindow(), GetKonsoleDBusSession())
+}
+
+func normalizeKonsoleFocusHints(terminalName, service, window, session string) (string, string, string) {
+	if !IsKonsoleTerminalName(terminalName) {
+		return "", "", ""
+	}
+	return strings.TrimSpace(service), strings.TrimSpace(window), strings.TrimSpace(session)
+}

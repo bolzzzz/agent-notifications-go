@@ -40,12 +40,12 @@ func GetFocusMethods() []FocusMethod {
 // folderName is the project folder name used for title-based window search (may be empty).
 // It tries each method in order until one succeeds.
 func TryFocus(terminalName, folderName string) error {
-	return TryFocusWithHints(terminalName, folderName, "", "", "", "", "", "")
+	return TryFocusWithHints(terminalName, folderName, "", "", "", "", "", "", "", "", "")
 }
 
 // TryFocusWithWindowID preserves the previous API for callers that only have an exact X11 window ID.
 func TryFocusWithWindowID(terminalName, folderName, windowID string) error {
-	return TryFocusWithHints(terminalName, folderName, "", "", windowID, "", "", "")
+	return TryFocusWithHints(terminalName, folderName, "", "", windowID, "", "", "", "", "", "")
 }
 
 // TryFocusWithHints attempts exact focus using hook-time hints first, then falls back to
@@ -53,6 +53,7 @@ func TryFocusWithWindowID(terminalName, folderName, windowID string) error {
 // cwdFolderName is the current cwd folder to try if folderName-based search fails.
 // workspaceName is the VS Code workspace name to try if folder searches fail.
 // wezTermPaneID and wezTermSocket enable tab-level focus for WezTerm.
+// konsoleService, konsoleWindow, konsoleSession enable tab-level focus for Konsole.
 //
 // For WezTerm, window-level focus runs first, then the pane switch runs after a short
 // delay. This ordering matters: GNOME's XDG Activation Token is processed asynchronously
@@ -60,8 +61,9 @@ func TryFocusWithWindowID(terminalName, folderName, windowID string) error {
 // switch runs first. Running the pane switch last ensures it wins.
 // If all window-level methods fail but a pane ID is available, TryWezTermPane is tried
 // as a last resort (activate-pane also raises the window on WezTerm).
-func TryFocusWithHints(terminalName, folderName, cwdFolderName, workspaceName, windowID, windowTitle, wezTermPaneID, wezTermSocket string) error {
+func TryFocusWithHints(terminalName, folderName, cwdFolderName, workspaceName, windowID, windowTitle, wezTermPaneID, wezTermSocket, konsoleService, konsoleWindow, konsoleSession string) error {
 	wezTermPaneID, wezTermSocket = normalizeWezTermFocusHints(terminalName, wezTermPaneID, wezTermSocket)
+	konsoleService, konsoleWindow, konsoleSession = normalizeKonsoleFocusHints(terminalName, konsoleService, konsoleWindow, konsoleSession)
 	windowFocused := false
 	var exactErr, lastErr error
 
@@ -163,6 +165,20 @@ func TryFocusWithHints(terminalName, folderName, cwdFolderName, workspaceName, w
 		return nil
 	}
 
+	// Konsole is a tabbed terminal: the generic methods above only raise the OS-level
+	// window, which may be showing a different tab than the one Claude is running in.
+	// Switch to the exact tab via Konsole's own D-Bus session API. Best-effort when the
+	// window is already focused; contributes to the error otherwise.
+	if konsoleService != "" && konsoleWindow != "" && konsoleSession != "" {
+		if err := TryKonsoleSession(konsoleService, konsoleWindow, konsoleSession); err != nil {
+			if !windowFocused {
+				lastErr = err
+			}
+		} else {
+			windowFocused = true
+		}
+	}
+
 	if !windowFocused {
 		if exactErr != nil && lastErr != nil {
 			return fmt.Errorf("%v; fallback focus failed, last error: %v", exactErr, lastErr)
@@ -253,6 +269,39 @@ func TryWezTermPane(paneID, socketPath string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("wezterm cli activate-pane failed: %w, output: %s", err, strings.TrimSpace(string(output)))
+	}
+	return nil
+}
+
+// konsoleSessionIDPattern extracts the numeric session ID from a Konsole
+// D-Bus session object path, e.g. "/Sessions/2" -> "2".
+var konsoleSessionIDPattern = regexp.MustCompile(`(\d+)$`)
+
+// TryKonsoleSession switches the Konsole window at windowPath to the tab
+// identified by sessionPath, using Konsole's own D-Bus session API
+// (org.kde.konsole.Window.setCurrentSession on the service that owns that
+// window). This is required in addition to window-level focus: Konsole is a
+// tabbed terminal, and the generic focus methods only raise the OS-level
+// window, not any particular tab within it.
+func TryKonsoleSession(service, windowPath, sessionPath string) error {
+	match := konsoleSessionIDPattern.FindStringSubmatch(sessionPath)
+	if match == nil {
+		return fmt.Errorf("konsole session: could not parse session id from %q", sessionPath)
+	}
+	sessionID, err := strconv.Atoi(match[1])
+	if err != nil {
+		return fmt.Errorf("konsole session: invalid session id in %q: %w", sessionPath, err)
+	}
+
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		return fmt.Errorf("konsole session: failed to connect to session bus: %w", err)
+	}
+	defer conn.Close()
+
+	obj := conn.Object(service, dbus.ObjectPath(windowPath))
+	if call := obj.Call("org.kde.konsole.Window.setCurrentSession", 0, int32(sessionID)); call.Err != nil {
+		return fmt.Errorf("konsole session: setCurrentSession failed: %w", call.Err)
 	}
 	return nil
 }

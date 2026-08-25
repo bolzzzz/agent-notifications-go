@@ -40,6 +40,7 @@ func NewClient() (*Client, error) {
 // focusWorkspaceName is the VS Code workspace name to try if folder searches fail (may be empty).
 // focusWindowID and focusWindowTitle are optional exact window hints captured in the hook process.
 // wezTermPaneID and wezTermSocket are WezTerm-specific hints for tab-level focus (may be empty).
+// konsoleService, konsoleWindow, konsoleSession are Konsole-specific hints for tab-level focus (may be empty).
 // urgency is the D-Bus urgency hint: 0=low, 1=normal, 2=critical.
 func (c *Client) SendNotification(
 	title,
@@ -52,7 +53,10 @@ func (c *Client) SendNotification(
 	focusWindowID,
 	focusWindowTitle,
 	wezTermPaneID,
-	wezTermSocket string,
+	wezTermSocket,
+	konsoleService,
+	konsoleWindow,
+	konsoleSession string,
 	urgency,
 	timeout int,
 ) (*NotifyResponse, error) {
@@ -60,19 +64,22 @@ func (c *Client) SendNotification(
 		Type:    MessageTypeNotify,
 		Version: ProtocolVersion,
 		Notify: &NotifyRequest{
-			Title:              title,
-			Body:               body,
-			AppName:            appName,
-			FocusTarget:        focusTarget,
-			FocusFolder:        focusFolder,
-			FocusCWDFolder:     focusCWDFolder,
-			FocusWorkspaceName: focusWorkspaceName,
-			FocusWindowID:      focusWindowID,
-			FocusWindowTitle:   focusWindowTitle,
-			FocusWezTermPaneID: wezTermPaneID,
-			FocusWezTermSocket: wezTermSocket,
-			Urgency:            urgency,
-			Timeout:            timeout,
+			Title:               title,
+			Body:                body,
+			AppName:             appName,
+			FocusTarget:         focusTarget,
+			FocusFolder:         focusFolder,
+			FocusCWDFolder:      focusCWDFolder,
+			FocusWorkspaceName:  focusWorkspaceName,
+			FocusWindowID:       focusWindowID,
+			FocusWindowTitle:    focusWindowTitle,
+			FocusWezTermPaneID:  wezTermPaneID,
+			FocusWezTermSocket:  wezTermSocket,
+			FocusKonsoleService: konsoleService,
+			FocusKonsoleWindow:  konsoleWindow,
+			FocusKonsoleSession: konsoleSession,
+			Urgency:             urgency,
+			Timeout:             timeout,
 		},
 	}
 

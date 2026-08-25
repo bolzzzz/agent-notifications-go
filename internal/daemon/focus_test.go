@@ -151,3 +151,13 @@ func TestSplitWindowIDs_TrimsBlankLines(t *testing.T) {
 		t.Errorf("splitWindowIDs() = %#v, want %#v", got, want)
 	}
 }
+
+func TestTryKonsoleSession_InvalidSessionPath(t *testing.T) {
+	err := TryKonsoleSession(":1.511", "/Windows/1", "/Sessions/abc")
+	if err == nil {
+		t.Fatal("TryKonsoleSession() with non-numeric session path: expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "could not parse session id") {
+		t.Errorf("TryKonsoleSession() error = %v, want it to mention parse failure", err)
+	}
+}

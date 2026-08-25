@@ -21,15 +21,18 @@ import (
 
 // focusInfo holds the focus target and folder for a notification.
 type focusInfo struct {
-	target        string
-	folder        string
-	cwdFolder     string
-	workspaceName string
-	windowID      string
-	windowTitle   string
-	wezTermPaneID string
-	wezTermSocket string
-	notifKey      string // source key used in lastNotifID, for cleanup on close
+	target         string
+	folder         string
+	cwdFolder      string
+	workspaceName  string
+	windowID       string
+	windowTitle    string
+	wezTermPaneID  string
+	wezTermSocket  string
+	konsoleService string
+	konsoleWindow  string
+	konsoleSession string
+	notifKey       string // source key used in lastNotifID, for cleanup on close
 }
 
 // Server is the notification daemon server
@@ -322,15 +325,18 @@ func (s *Server) handleNotification(req *NotifyRequest) (*NotifyResponse, error)
 	// Store focus context (write lock; also read for no-op check on same id)
 	s.focusCtxMu.Lock()
 	s.focusCtx[id] = focusInfo{
-		target:        focusTarget,
-		folder:        req.FocusFolder,
-		cwdFolder:     req.FocusCWDFolder,
-		workspaceName: req.FocusWorkspaceName,
-		windowID:      req.FocusWindowID,
-		windowTitle:   req.FocusWindowTitle,
-		wezTermPaneID: req.FocusWezTermPaneID,
-		wezTermSocket: req.FocusWezTermSocket,
-		notifKey:      key,
+		target:         focusTarget,
+		folder:         req.FocusFolder,
+		cwdFolder:      req.FocusCWDFolder,
+		workspaceName:  req.FocusWorkspaceName,
+		windowID:       req.FocusWindowID,
+		windowTitle:    req.FocusWindowTitle,
+		wezTermPaneID:  req.FocusWezTermPaneID,
+		wezTermSocket:  req.FocusWezTermSocket,
+		konsoleService: req.FocusKonsoleService,
+		konsoleWindow:  req.FocusKonsoleWindow,
+		konsoleSession: req.FocusKonsoleSession,
+		notifKey:       key,
 	}
 	s.focusCtxMu.Unlock()
 
@@ -363,6 +369,9 @@ func (s *Server) onActionInvoked(sig *notify.ActionInvokedSignal) {
 	focusWindowTitle := info.windowTitle
 	wezTermPaneID := info.wezTermPaneID
 	wezTermSocket := info.wezTermSocket
+	konsoleService := info.konsoleService
+	konsoleWindow := info.konsoleWindow
+	konsoleSession := info.konsoleSession
 
 	if !exists {
 		log.Printf("[WARN] No focus context for notification %d", sig.ID)
@@ -370,9 +379,9 @@ func (s *Server) onActionInvoked(sig *notify.ActionInvokedSignal) {
 	}
 
 	// Attempt to focus
-	log.Printf("[INFO] Attempting to focus: %s (folder: %s, cwd_folder: %s, workspace: %s, window_id: %s, window_title: %q, wezterm_pane: %s)",
-		focusTarget, focusFolder, focusCWDFolder, focusWorkspaceName, focusWindowID, focusWindowTitle, wezTermPaneID)
-	if err := TryFocusWithHints(focusTarget, focusFolder, focusCWDFolder, focusWorkspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket); err != nil {
+	log.Printf("[INFO] Attempting to focus: %s (folder: %s, cwd_folder: %s, workspace: %s, window_id: %s, window_title: %q, wezterm_pane: %s, konsole_session: %s)",
+		focusTarget, focusFolder, focusCWDFolder, focusWorkspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, konsoleSession)
+	if err := TryFocusWithHints(focusTarget, focusFolder, focusCWDFolder, focusWorkspaceName, focusWindowID, focusWindowTitle, wezTermPaneID, wezTermSocket, konsoleService, konsoleWindow, konsoleSession); err != nil {
 		log.Printf("[ERROR] Focus failed: %v", err)
 	} else {
 		log.Printf("[INFO] Focus succeeded")
