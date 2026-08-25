@@ -121,11 +121,25 @@ func TryFocusWithHints(terminalName, folderName, cwdFolderName, workspaceName, w
 		// on the correct tab, so this only matters for picking the right window when
 		// multiple WezTerm windows are open.
 		raised := false
-		if wt := wezTermWindowTitle(wezTermPaneID, wezTermSocket); wt != "" {
+		wt := wezTermWindowTitle(wezTermPaneID, wezTermSocket)
+		if wt != "" {
 			raised = gnomeActivateWindow("activateBySubstring", wt)
 		}
 		if !raised {
-			gnomeActivateWindow("activateByWmClass", GetGnomeWmClass(terminalName))
+			raised = gnomeActivateWindow("activateByWmClass", GetGnomeWmClass(terminalName))
+		}
+		if !raised {
+			// activate-window-by-title is a GNOME Shell extension and doesn't exist on
+			// other compositors (e.g. KDE Plasma), so both calls above always fail
+			// there and the window itself never gets raised — only the pane switch
+			// below runs, which doesn't affect which OS window is on top. Fall back to
+			// the same compositor-specific methods used for other terminals.
+			for _, method := range GetFocusMethods() {
+				if err := method.Fn(terminalName, wt); err == nil {
+					raised = true
+					break
+				}
+			}
 		}
 
 		// Sleep briefly so GNOME's XDG Activation Token is processed before switching
