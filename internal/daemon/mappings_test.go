@@ -259,13 +259,8 @@ func TestGetAppID_EmptyString(t *testing.T) {
 	}
 }
 
-func TestGetNotificationDesktopEntryID_GnomeWaylandUsesAgentDesktopFile(t *testing.T) {
-	restore := saveTerminalEnv(t)
-	defer restore()
-
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
-	t.Setenv("XDG_SESSION_TYPE", "wayland")
-	t.Setenv("XDG_CURRENT_DESKTOP", "ubuntu:GNOME")
+func writeAgentNotificationsDesktopFile(t *testing.T) {
+	t.Helper()
 	desktopFile := getAgentNotificationsDesktopEntryPath()
 	if err := os.MkdirAll(filepath.Dir(desktopFile), 0o755); err != nil {
 		t.Fatalf("MkdirAll failed: %v", err)
@@ -273,63 +268,46 @@ func TestGetNotificationDesktopEntryID_GnomeWaylandUsesAgentDesktopFile(t *testi
 	if err := os.WriteFile(desktopFile, []byte("[Desktop Entry]\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile failed: %v", err)
 	}
+}
 
-	if got := GetNotificationDesktopEntryID("code"); got != agentNotificationsDesktopEntryID {
-		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, agentNotificationsDesktopEntryID)
+func TestGetNotificationDesktopEntryID_UsesAgentDesktopFileWhenPresent(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	cases := []struct {
+		name           string
+		sessionType    string
+		currentDesktop string
+		sessionDesktop string
+		terminal       string
+	}{
+		{"kde-wayland", "wayland", "KDE", "", "code"},
+		{"gnome-wayland", "wayland", "ubuntu:GNOME", "", "code"},
+		{"gnome-session-desktop", "wayland", "", "gnome", "gnome-terminal"},
+		{"gnome-x11", "x11", "GNOME", "", "code"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("XDG_DATA_HOME", t.TempDir())
+			t.Setenv("XDG_SESSION_TYPE", tc.sessionType)
+			t.Setenv("XDG_CURRENT_DESKTOP", tc.currentDesktop)
+			t.Setenv("XDG_SESSION_DESKTOP", tc.sessionDesktop)
+			writeAgentNotificationsDesktopFile(t)
+
+			if got := GetNotificationDesktopEntryID(tc.terminal); got != agentNotificationsDesktopEntryID {
+				t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, agentNotificationsDesktopEntryID)
+			}
+		})
 	}
 }
 
-func TestGetNotificationDesktopEntryID_GnomeWaylandViaSessionDesktop(t *testing.T) {
+func TestGetNotificationDesktopEntryID_FallsBackWhenDesktopFileMissing(t *testing.T) {
 	restore := saveTerminalEnv(t)
 	defer restore()
 
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
-	t.Setenv("XDG_SESSION_TYPE", "wayland")
-	t.Setenv("XDG_SESSION_DESKTOP", "gnome")
-	desktopFile := getAgentNotificationsDesktopEntryPath()
-	if err := os.MkdirAll(filepath.Dir(desktopFile), 0o755); err != nil {
-		t.Fatalf("MkdirAll failed: %v", err)
-	}
-	if err := os.WriteFile(desktopFile, []byte("[Desktop Entry]\n"), 0o644); err != nil {
-		t.Fatalf("WriteFile failed: %v", err)
-	}
-
-	if got := GetNotificationDesktopEntryID("gnome-terminal"); got != agentNotificationsDesktopEntryID {
-		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, agentNotificationsDesktopEntryID)
-	}
-}
-
-func TestGetNotificationDesktopEntryID_GnomeWaylandWithoutDesktopFileFallsBack(t *testing.T) {
-	restore := saveTerminalEnv(t)
-	defer restore()
-
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
-	t.Setenv("XDG_SESSION_TYPE", "wayland")
-	t.Setenv("XDG_CURRENT_DESKTOP", "GNOME")
-
-	if got := GetNotificationDesktopEntryID("code"); got != "code" {
-		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, "code")
-	}
-}
-
-func TestGetNotificationDesktopEntryID_NonGnomeWaylandKeepsAppDesktopEntry(t *testing.T) {
-	restore := saveTerminalEnv(t)
-	defer restore()
-
 	t.Setenv("XDG_SESSION_TYPE", "wayland")
 	t.Setenv("XDG_CURRENT_DESKTOP", "KDE")
-
-	if got := GetNotificationDesktopEntryID("code"); got != "code" {
-		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, "code")
-	}
-}
-
-func TestGetNotificationDesktopEntryID_GnomeX11KeepsAppDesktopEntry(t *testing.T) {
-	restore := saveTerminalEnv(t)
-	defer restore()
-
-	t.Setenv("XDG_SESSION_TYPE", "x11")
-	t.Setenv("XDG_CURRENT_DESKTOP", "GNOME")
 
 	if got := GetNotificationDesktopEntryID("code"); got != "code" {
 		t.Errorf("GetNotificationDesktopEntryID() = %q, want %q", got, "code")

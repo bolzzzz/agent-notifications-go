@@ -59,35 +59,16 @@ func GetDesktopEntryID(terminalName string) string {
 }
 
 // GetNotificationDesktopEntryID returns the desktop-entry hint value to use for
-// notifications. GNOME on Wayland shows a long-running loading cursor when the
-// clicked notification advertises the terminal/editor desktop entry and the app
-// never consumes the generated activation token. A dedicated hidden desktop
-// file with StartupNotify=false avoids that spinner while preserving click
-// handling via our daemon.
+// notifications. Notifications are attributed to this plugin so per-app
+// settings (history, DND, badges) are not mixed with the terminal/editor.
+// Falls back to the terminal desktop entry if the plugin desktop file is
+// missing. The dedicated desktop file also uses StartupNotify=false so GNOME
+// on Wayland does not leave a loading cursor after click-to-focus.
 func GetNotificationDesktopEntryID(terminalName string) string {
-	if isGnomeWaylandSession() && hasAgentNotificationsDesktopEntry() {
+	if hasAgentNotificationsDesktopEntry() {
 		return agentNotificationsDesktopEntryID
 	}
 	return GetDesktopEntryID(terminalName)
-}
-
-func isGnomeWaylandSession() bool {
-	if !strings.EqualFold(strings.TrimSpace(os.Getenv("XDG_SESSION_TYPE")), "wayland") {
-		return false
-	}
-
-	for _, desktop := range []string{
-		os.Getenv("XDG_CURRENT_DESKTOP"),
-		os.Getenv("XDG_SESSION_DESKTOP"),
-	} {
-		for _, part := range strings.Split(desktop, ":") {
-			if strings.EqualFold(strings.TrimSpace(part), "GNOME") {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func hasAgentNotificationsDesktopEntry() bool {

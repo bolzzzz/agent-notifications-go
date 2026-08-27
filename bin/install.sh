@@ -1555,10 +1555,11 @@ install_gnome_activate_window_extension() {
     fi
 }
 
-# Install a hidden desktop entry used for GNOME/Wayland notifications.
+# Install a desktop entry used as the notification desktop-entry hint.
 # StartupNotify=false prevents GNOME Shell from creating an activation token
 # that would otherwise leave a loading cursor spinning after our daemon has
-# already focused the target window.
+# already focused the target window. NotShowIn keeps it out of app launchers
+# while leaving NoDisplay unset so KDE can list it in notification settings.
 install_linux_notification_desktop_entry() {
     [ "$PLATFORM" = "linux" ] || return 0
 
@@ -1578,18 +1579,18 @@ Name=Agent Notifications Go
 Type=Application
 Icon=utilities-terminal
 Exec=/usr/bin/true
-NoDisplay=true
 StartupNotify=false
 Terminal=false
+NotShowIn=GNOME;KDE;XFCE;LXQt;Unity;MATE;Cinnamon;
 EOF
 
     if mv "$tmp_file" "$desktop_file" 2>/dev/null; then
-        echo -e "${GREEN}✓${NC} Hidden desktop entry installed for GNOME/Wayland notifications"
+        echo -e "${GREEN}✓${NC} Desktop entry installed for notification attribution"
         return 0
     fi
 
     rm -f "$tmp_file" 2>/dev/null || true
-    echo -e "${YELLOW}⚠ Could not install hidden notification desktop entry${NC}"
+    echo -e "${YELLOW}⚠ Could not install notification desktop entry${NC}"
     return 1
 }
 
