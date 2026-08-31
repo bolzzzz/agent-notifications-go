@@ -15,6 +15,8 @@ func saveTerminalEnv(t *testing.T) func() {
 		"VSCODE_INJECTION",
 		"VSCODE_GIT_IPC_HANDLE",
 		"VSCODE_PID",
+		"VSCODE_GIT_ASKPASS_NODE",
+		"VSCODE_GIT_ASKPASS_MAIN",
 		"CURSOR_PROJECT_DIR",
 		"CURSOR_VERSION",
 		"CURSOR_TRANSCRIPT_PATH",
@@ -675,6 +677,41 @@ func TestGetTerminalName_CursorCLI_KeepsRealTerminal(t *testing.T) {
 
 	if got := GetTerminalName(); got != "kitty" {
 		t.Errorf("GetTerminalName() Cursor CLI in kitty = %q, want %q", got, "kitty")
+	}
+}
+
+func TestGetTerminalName_CursorCLI_InVSCodeTerminal(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	// The Cursor CLI runs as a guest inside VS Code's integrated terminal: its
+	// hook subprocesses carry CURSOR_* (from the CLI) plus VS Code host markers
+	// (from the terminal). The Cursor IDE window may not even exist — the
+	// hosting VS Code window must be focused instead.
+	os.Setenv("CURSOR_PROJECT_DIR", "/repo")
+	os.Setenv("CURSOR_VERSION", "1.0.0")
+	os.Setenv("TERM_PROGRAM", "vscode")
+	os.Setenv("VSCODE_INJECTION", "1")
+	os.Setenv("CHROME_DESKTOP", "code.desktop")
+
+	if got := GetTerminalName(); got != "vscode" {
+		t.Errorf("GetTerminalName() Cursor CLI in VS Code terminal = %q, want %q", got, "vscode")
+	}
+}
+
+func TestGetTerminalName_CursorCLI_InVSCodeTerminal_AskPassOnly(t *testing.T) {
+	restore := saveTerminalEnv(t)
+	defer restore()
+
+	// Same guest scenario, but the desktop-file marker is missing and the VS
+	// Code host is identified by its askpass install paths alone.
+	os.Setenv("CURSOR_PROJECT_DIR", "/repo")
+	os.Setenv("TERM_PROGRAM", "vscode")
+	os.Setenv("VSCODE_GIT_ASKPASS_NODE", "/usr/share/code/code")
+	os.Setenv("VSCODE_GIT_ASKPASS_MAIN", "/usr/share/code/resources/app/extensions/git/dist/askpass-main.js")
+
+	if got := GetTerminalName(); got != "vscode" {
+		t.Errorf("GetTerminalName() Cursor CLI in VS Code terminal (askpass) = %q, want %q", got, "vscode")
 	}
 }
 

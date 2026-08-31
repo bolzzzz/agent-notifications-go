@@ -107,6 +107,12 @@ already raise notifications. Click-to-focus treats the hook as Cursor IDE when
 `vscode`, or `VSCODE_*` present). Cursor CLI running in a real terminal keeps
 that terminal (`TERM_PROGRAM=kitty`, Ghostty, …).
 
+**Cursor CLI inside VS Code's terminal** focuses the VS Code window instead.
+The hook subprocesses then carry `CURSOR_*` (from the CLI) plus VS Code host
+markers (`CHROME_DESKTOP=code.desktop`, or `VSCODE_GIT_ASKPASS_*` paths under
+VS Code's install directory), and the Cursor IDE window may not even exist —
+the hosting editor wins.
+
 Title matching uses `"folderName - Cursor"` (and the workspace variant
 `"folderName (Workspace) - Cursor"`), the same hyphen separator as VS Code on
 Linux. If those miss — for example a custom `window.title` that inserts

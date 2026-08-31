@@ -47,8 +47,11 @@ func GetTerminalBundleID(configOverride string) string {
 
 	// 3. Map TERM_PROGRAM to bundle ID. Cursor IDE is a VS Code fork and often
 	// sets TERM_PROGRAM=vscode; prefer Cursor's bundle ID when CURSOR_* is set.
+	// Exception: the Cursor CLI runs as a guest inside VS Code's integrated
+	// terminal too — its hook subprocesses carry CURSOR_* plus VS Code host
+	// markers, and the VS Code window is the one that must be raised.
 	if termProgram := os.Getenv("TERM_PROGRAM"); termProgram != "" {
-		if product.IsCursorEnv() && strings.EqualFold(termProgram, "vscode") {
+		if product.IsCursorEnv() && strings.EqualFold(termProgram, "vscode") && !product.IsVSCodeDesktopHost() {
 			return "com.todesktop.230313mzl4w4u92"
 		}
 		if bundleID, ok := terminalBundleIDMap[termProgram]; ok {

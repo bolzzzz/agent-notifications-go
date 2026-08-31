@@ -338,7 +338,13 @@ func GetTerminalName() string {
 	// plain Claude Code session opened there has no CURSOR_* to check. Fall back
 	// to isCursorDesktopHost, which reads GTK/Chromium launch-tracking env vars
 	// that every child process of the Cursor app inherits.
-	if (product.IsCursorEnv() || isCursorDesktopHost()) && cursorIDELike(termProg) {
+	//
+	// Exception: the Cursor CLI also runs as a guest inside VS Code's
+	// integrated terminal. Its hook subprocesses carry CURSOR_* plus VS Code
+	// host markers (CHROME_DESKTOP=code.desktop, askpass paths under VS Code's
+	// install dir), and the Cursor IDE window may not even exist — fall through
+	// so the hosting VS Code window is focused instead.
+	if (product.IsCursorEnv() || isCursorDesktopHost()) && cursorIDELike(termProg) && !product.IsVSCodeDesktopHost() {
 		return "Cursor"
 	}
 
@@ -372,17 +378,10 @@ func GetTerminalName() string {
 }
 
 // isCursorDesktopHost reports whether the current process was launched (directly
-// or via an ancestor) from the Cursor desktop app, using GTK/Chromium
-// launch-tracking env vars (GIO_LAUNCHED_DESKTOP_FILE, CHROME_DESKTOP) that name
-// the .desktop file of the launching app and are inherited by every child
-// process — including a plain shell opened in Cursor's integrated terminal.
+// or via an ancestor) from the Cursor desktop app. See product.DesktopHost for
+// the env vars consulted.
 func isCursorDesktopHost() bool {
-	for _, name := range []string{"GIO_LAUNCHED_DESKTOP_FILE", "CHROME_DESKTOP"} {
-		if strings.Contains(strings.ToLower(os.Getenv(name)), "cursor") {
-			return true
-		}
-	}
-	return false
+	return product.IsCursorDesktopHost()
 }
 
 func cursorIDELike(termProg string) bool {

@@ -149,11 +149,36 @@ func TestGetTerminalBundleID_CursorIDERemapsVSCodeTermProgram(t *testing.T) {
 	t.Setenv("__CFBundleIdentifier", "")
 	t.Setenv("TERM_PROGRAM", "vscode")
 	t.Setenv("CURSOR_PROJECT_DIR", "/repo")
+	// Clear desktop-host markers so the test does not depend on the runner's
+	// environment (e.g. macOS CI running inside an editor's terminal).
+	t.Setenv("GIO_LAUNCHED_DESKTOP_FILE", "")
+	t.Setenv("CHROME_DESKTOP", "")
+	t.Setenv("VSCODE_GIT_ASKPASS_NODE", "")
+	t.Setenv("VSCODE_GIT_ASKPASS_MAIN", "")
 
 	got := GetTerminalBundleID("")
 	want := "com.todesktop.230313mzl4w4u92"
 	if got != want {
 		t.Errorf("GetTerminalBundleID() Cursor+vscode = %q, want %q", got, want)
+	}
+}
+
+func TestGetTerminalBundleID_CursorCLIInVSCodeTerminalKeepsVSCode(t *testing.T) {
+	// The Cursor CLI runs as a guest inside VS Code's integrated terminal: its
+	// hook subprocesses carry CURSOR_* plus VS Code host markers. The VS Code
+	// window — not the (possibly not running) Cursor IDE — must be raised.
+	t.Setenv("__CFBundleIdentifier", "")
+	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("CURSOR_PROJECT_DIR", "/repo")
+	t.Setenv("GIO_LAUNCHED_DESKTOP_FILE", "")
+	t.Setenv("CHROME_DESKTOP", "code.desktop")
+	t.Setenv("VSCODE_GIT_ASKPASS_NODE", "")
+	t.Setenv("VSCODE_GIT_ASKPASS_MAIN", "")
+
+	got := GetTerminalBundleID("")
+	want := "com.microsoft.VSCode"
+	if got != want {
+		t.Errorf("GetTerminalBundleID() Cursor CLI in VS Code terminal = %q, want %q", got, want)
 	}
 }
 
